@@ -1,23 +1,50 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 
 export interface MeteorWebappPlugin {
+  /**
+   * Check for available updates
+   */
   checkForUpdates(): Promise<void>;
+
+  /**
+   * Signal that the app startup has completed
+   */
   startupDidComplete(): Promise<void>;
+
+  /**
+   * Get the current version of the app
+   */
   getCurrentVersion(): Promise<{ version: string }>;
+
+  /**
+   * Check if an update is available
+   */
   isUpdateAvailable(): Promise<{ available: boolean }>;
+
+  /**
+   * Reload the app with the latest version
+   */
   reload(): Promise<void>;
 
-  // Event listener methods
+  /**
+   * Listen for update available events
+   */
   addListener(
     eventName: 'updateAvailable',
     listenerFunc: (event: UpdateAvailableEvent) => void,
   ): Promise<PluginListenerHandle>;
 
+  /**
+   * Listen for update complete events
+   */
   addListener(
     eventName: 'updateComplete',
     listenerFunc: (event: UpdateCompleteEvent) => void,
   ): Promise<PluginListenerHandle>;
 
+  /**
+   * Remove all listeners
+   */
   removeAllListeners(): Promise<void>;
 }
 

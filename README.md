@@ -30,7 +30,15 @@ npx cap sync
 
 <docgen-index>
 
-- [`echo(...)`](#echo)
+* [`checkForUpdates()`](#checkforupdates)
+* [`startupDidComplete()`](#startupdidcomplete)
+* [`getCurrentVersion()`](#getcurrentversion)
+* [`isUpdateAvailable()`](#isupdateavailable)
+* [`reload()`](#reload)
+* [`addListener('updateAvailable', ...)`](#addlistenerupdateavailable-)
+* [`addListener('updateComplete', ...)`](#addlistenerupdatecomplete-)
+* [`removeAllListeners()`](#removealllisteners)
+* [Interfaces](#interfaces)
 
 </docgen-index>
 
