@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "StrummachineCapacitorMeteorWebapp",
+    name: "CapacitorMeteorWebapp",
     platforms: [.iOS(.v14)],
     products: [
         .library(
-            name: "StrummachineCapacitorMeteorWebapp",
+            name: "CapacitorMeteorWebapp",
             targets: ["CapacitorMeteorWebAppPlugin"])
     ],
     dependencies: [
@@ -17,12 +17,12 @@ let package = Package(
             name: "CapacitorMeteorWebAppPlugin",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
-                .product(name: "Cordova", package: "capacitor-swift-pm")
+                .product(name: "Cordova", package: "capacitor-swift-pm"),
             ],
             path: "ios/Sources/CapacitorMeteorWebAppPlugin"),
         .testTarget(
             name: "CapacitorMeteorWebAppPluginTests",
             dependencies: ["CapacitorMeteorWebAppPlugin"],
-            path: "ios/Tests/CapacitorMeteorWebAppPluginTests")
+            path: "ios/Tests/CapacitorMeteorWebAppPluginTests"),
     ]
 )
