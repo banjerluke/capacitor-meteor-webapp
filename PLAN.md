@@ -80,8 +80,8 @@ src/
 ├── web.ts                 # Web implementation (warning stubs)
 └── index.ts               # Main export + window.WebAppLocalServer shim
 
-ios/Sources/CapacitorMeteorWebapp/
-├── CapacitorMeteorWebappPlugin.swift     # Main plugin class & bridge (replaces WebAppLocalServer.swift)
+ios/Sources/CapacitorMeteorWebApp/
+├── CapacitorMeteorWebAppPlugin.swift     # Main plugin class & bridge (replaces WebAppLocalServer.swift)
 ├── WebAppConfiguration.swift            # NSUserDefaults-based state (based on reference-plugin-cordova/src/ios/WebAppConfiguration.swift)
 ├── Bundle/                               # Model layer
 │   ├── AssetBundle.swift                 # Bundle representation (based on reference-plugin-cordova/src/ios/AssetBundle.swift)
@@ -98,7 +98,7 @@ ios/Sources/CapacitorMeteorWebapp/
 
 #### 1.2 TypeScript Definitions
 ```typescript
-export interface MeteorWebappPlugin {
+export interface MeteorWebAppPlugin {
   checkForUpdates(): Promise<void>;
   startupDidComplete(): Promise<void>;
   getCurrentVersion(): Promise<{ version: string }>;
@@ -228,7 +228,7 @@ Library/NoCloud/meteor/v1.2.3/
 ```typescript
 // In index.ts
 import { registerPlugin } from '@capacitor/core';
-const Native = registerPlugin<MeteorWebappPlugin>('CapacitorMeteorWebapp');
+const Native = registerPlugin<MeteorWebAppPlugin>('CapacitorMeteorWebApp');
 
 window.WebAppLocalServer = {
   onNewVersionReady(callback) {
@@ -295,7 +295,7 @@ window.WebAppLocalServer = {
 
 ### Error Codes & Types
 ```typescript
-enum MeteorWebappError {
+enum MeteorWebAppError {
   DOWNLOAD_FAILED = 'DOWNLOAD_FAILED',
   VALIDATION_FAILED = 'VALIDATION_FAILED', 
   BLACKLISTED_VERSION = 'BLACKLISTED_VERSION',

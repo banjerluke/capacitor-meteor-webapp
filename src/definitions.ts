@@ -1,10 +1,6 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 
-export interface MeteorWebappPlugin {
-  /**
-   * Check for available updates
-   */
-  checkForUpdates(): Promise<void>;
+export interface CapacitorMeteorWebAppPlugin {
 
   /**
    * Signal that the app startup has completed
@@ -57,7 +53,7 @@ export interface UpdateCompleteEvent {
   isReady: boolean;
 }
 
-export enum MeteorWebappError {
+export enum MeteorWebAppError {
   DOWNLOAD_FAILED = 'DOWNLOAD_FAILED',
   VALIDATION_FAILED = 'VALIDATION_FAILED',
   BLACKLISTED_VERSION = 'BLACKLISTED_VERSION',

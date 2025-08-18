@@ -1,30 +1,10 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { MeteorWebappPlugin, UpdateAvailableEvent } from './definitions';
+import type { CapacitorMeteorWebAppPlugin } from './definitions';
 
-const MeteorWebapp = registerPlugin<MeteorWebappPlugin>('CapacitorMeteorWebapp', {
-  web: () => import('./web').then((m) => new m.MeteorWebappWeb()),
+const CapacitorMeteorWebApp = registerPlugin<CapacitorMeteorWebAppPlugin>('CapacitorMeteorWebApp', {
+  web: () => import('./web').then((m) => new m.CapacitorMeteorWebAppWeb()),
 });
 
-// WebAppLocalServer compatibility shim
-(window as any).WebAppLocalServer = {
-  onNewVersionReady(callback: (event: UpdateAvailableEvent) => void): void {
-    MeteorWebapp.addListener('updateAvailable', callback);
-  },
-
-  async getNewCordovaVersion(): Promise<string | null> {
-    const update = await MeteorWebapp.isUpdateAvailable();
-    if (update.available) {
-      const current = await MeteorWebapp.getCurrentVersion();
-      return current.version;
-    }
-    return null;
-  },
-
-  async switchToPendingVersion(): Promise<void> {
-    return MeteorWebapp.reload();
-  },
-};
-
 export * from './definitions';
-export { MeteorWebapp };
+export { CapacitorMeteorWebApp };

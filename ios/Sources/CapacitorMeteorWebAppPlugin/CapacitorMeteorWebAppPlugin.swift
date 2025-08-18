@@ -31,13 +31,13 @@ class CapacitorBridgeAdapter: CapacitorBridge {
 }
 
 /**
- * Capacitor MeteorWebapp Plugin
+ * Capacitor MeteorWebApp Plugin
  * Enables hot code push functionality for Meteor apps
  */
 @objc(CapacitorMeteorWebAppPlugin)
 public class CapacitorMeteorWebAppPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CapacitorMeteorWebAppPlugin"
-    public let jsName = "MeteorWebapp"
+    public let jsName = "CapacitorMeteorWebApp"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "checkForUpdates", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startupDidComplete", returnType: CAPPluginReturnPromise),
@@ -97,7 +97,7 @@ public class CapacitorMeteorWebAppPlugin: CAPPlugin, CAPBridgedPlugin {
 @objc(CapacitorMeteorWebAppPlugin)
 public class CapacitorMeteorWebAppPlugin: NSObject {
     public let identifier = "CapacitorMeteorWebAppPlugin"
-    public let jsName = "MeteorWebapp"
+    public let jsName = "CapacitorMeteorWebApp"
 
     public override init() {
         super.init()

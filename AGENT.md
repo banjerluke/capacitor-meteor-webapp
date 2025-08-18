@@ -21,7 +21,7 @@ This project creates a Capacitor plugin that enables hot code push functionality
   - `definitions.ts` - Plugin interface definitions
   - `web.ts` - Web implementation
   - `index.ts` - Main plugin export
-- `ios/Sources/CapacitorMeteorWebapp/` - iOS native implementation
+- `ios/Sources/CapacitorMeteorWebApp/` - iOS native implementation
 - `android/` - Android implementation (future, not yet implemented)
 
 ### Documentation

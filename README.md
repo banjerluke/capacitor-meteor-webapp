@@ -30,7 +30,6 @@ npx cap sync
 
 <docgen-index>
 
-* [`checkForUpdates()`](#checkforupdates)
 * [`startupDidComplete()`](#startupdidcomplete)
 * [`getCurrentVersion()`](#getcurrentversion)
 * [`isUpdateAvailable()`](#isupdateavailable)
@@ -50,7 +49,7 @@ npx cap sync
 ```typescript
 export default {
   plugins: {
-    CapacitorMeteorWebapp: {
+    CapacitorMeteorWebApp: {
       // Meteor server URL (required)
       serverUrl: 'https://your-meteor-app.com',
       
@@ -103,9 +102,9 @@ interface UpdateCompleteEvent {
 Manually checks the Meteor server for new versions and downloads them if available.
 
 ```typescript
-import { MeteorWebapp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
 
-await MeteorWebapp.checkForUpdates();
+await MeteorWebApp.checkForUpdates();
 ```
 
 #### `startupDidComplete()`
@@ -113,14 +112,14 @@ await MeteorWebapp.checkForUpdates();
 
 ```typescript
 // In your main app component after successful initialization
-await MeteorWebapp.startupDidComplete();
+await MeteorWebApp.startupDidComplete();
 ```
 
 #### `getCurrentVersion()`
 Returns the version string of the currently running Meteor bundle.
 
 ```typescript
-const { version } = await MeteorWebapp.getCurrentVersion();
+const { version } = await MeteorWebApp.getCurrentVersion();
 console.log(`Running version: ${version}`);
 ```
 
@@ -128,7 +127,7 @@ console.log(`Running version: ${version}`);
 Checks if a downloaded update is ready to be applied.
 
 ```typescript
-const { available } = await MeteorWebapp.isUpdateAvailable();
+const { available } = await MeteorWebApp.isUpdateAvailable();
 if (available) {
   // Prompt user or automatically reload
 }
@@ -138,7 +137,7 @@ if (available) {
 Restarts the app with the latest downloaded version.
 
 ```typescript
-await MeteorWebapp.reload();
+await MeteorWebApp.reload();
 ```
 
 ### Event System
@@ -147,7 +146,7 @@ Listen for update lifecycle events:
 
 ```typescript
 // Listen for when new versions become available
-const updateListener = await MeteorWebapp.addListener(
+const updateListener = await MeteorWebApp.addListener(
   'updateAvailable', 
   (event) => {
     console.log(`New version available: ${event.version}`);
@@ -156,7 +155,7 @@ const updateListener = await MeteorWebapp.addListener(
 );
 
 // Listen for when updates complete
-const completeListener = await MeteorWebapp.addListener(
+const completeListener = await MeteorWebApp.addListener(
   'updateComplete',
   (event) => {
     console.log(`Update to ${event.version} completed. Ready: ${event.isReady}`);
@@ -164,7 +163,7 @@ const completeListener = await MeteorWebapp.addListener(
 );
 
 // Clean up listeners
-await MeteorWebapp.removeAllListeners();
+await MeteorWebApp.removeAllListeners();
 ```
 
 ## Cordova Compatibility Layer
@@ -198,21 +197,21 @@ if (newVersion) {
 ### Basic Setup
 
 ```typescript
-import { MeteorWebapp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
 
 export class App {
   async ngOnInit() {
     // Mark startup as successful
-    await MeteorWebapp.startupDidComplete();
+    await MeteorWebApp.startupDidComplete();
     
     // Check for updates on launch
-    await MeteorWebapp.checkForUpdates();
+    await MeteorWebApp.checkForUpdates();
     
     // Listen for available updates
-    await MeteorWebapp.addListener('updateAvailable', async (event) => {
+    await MeteorWebApp.addListener('updateAvailable', async (event) => {
       const shouldUpdate = confirm(`Update to ${event.version} is available. Apply now?`);
       if (shouldUpdate) {
-        await MeteorWebapp.reload();
+        await MeteorWebApp.reload();
       }
     });
   }
@@ -222,18 +221,18 @@ export class App {
 ### Advanced Update Flow
 
 ```typescript
-import { MeteorWebapp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
 
 class UpdateManager {
   private isUpdating = false;
 
   async initialize() {
     // Critical: Mark successful startup
-    await MeteorWebapp.startupDidComplete();
+    await MeteorWebApp.startupDidComplete();
     
     // Set up update listeners
-    await MeteorWebapp.addListener('updateAvailable', this.handleUpdateAvailable);
-    await MeteorWebapp.addListener('updateComplete', this.handleUpdateComplete);
+    await MeteorWebApp.addListener('updateAvailable', this.handleUpdateAvailable);
+    await MeteorWebApp.addListener('updateComplete', this.handleUpdateComplete);
     
     // Check for updates periodically
     setInterval(() => this.checkForUpdates(), 5 * 60 * 1000); // Every 5 minutes
@@ -243,7 +242,7 @@ class UpdateManager {
     if (this.isUpdating) return;
     
     try {
-      await MeteorWebapp.checkForUpdates();
+      await MeteorWebApp.checkForUpdates();
     } catch (error) {
       console.error('Update check failed:', error);
     }
@@ -261,7 +260,7 @@ class UpdateManager {
     this.showUpdateProgress();
     
     try {
-      await MeteorWebapp.reload();
+      await MeteorWebApp.reload();
     } catch (error) {
       console.error('Update failed:', error);
       this.hideUpdateProgress();
@@ -283,7 +282,7 @@ class UpdateManager {
 
 ```typescript
 import { useEffect, useState } from 'react';
-import { MeteorWebapp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
 
 export function useHotCodePush() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -294,32 +293,32 @@ export function useHotCodePush() {
 
     async function initialize() {
       // Mark startup complete
-      await MeteorWebapp.startupDidComplete();
+      await MeteorWebApp.startupDidComplete();
       
       // Get current version
-      const { version } = await MeteorWebapp.getCurrentVersion();
+      const { version } = await MeteorWebApp.getCurrentVersion();
       if (mounted) setCurrentVersion(version);
       
       // Listen for updates
-      await MeteorWebapp.addListener('updateAvailable', () => {
+      await MeteorWebApp.addListener('updateAvailable', () => {
         if (mounted) setUpdateAvailable(true);
       });
       
       // Check for updates
-      await MeteorWebapp.checkForUpdates();
+      await MeteorWebApp.checkForUpdates();
     }
 
     initialize().catch(console.error);
 
     return () => {
       mounted = false;
-      MeteorWebapp.removeAllListeners();
+      MeteorWebApp.removeAllListeners();
     };
   }, []);
 
   const applyUpdate = async () => {
     setUpdateAvailable(false);
-    await MeteorWebapp.reload();
+    await MeteorWebApp.reload();
   };
 
   return {
@@ -396,7 +395,7 @@ Move configuration from `config.xml` to `capacitor.config.ts`:
 // NEW: capacitor.config.ts
 export default {
   plugins: {
-    CapacitorMeteorWebapp: {
+    CapacitorMeteorWebApp: {
       serverUrl: 'https://your-meteor-app.com',
       startupTimeout: 30
     }
@@ -419,9 +418,9 @@ Optionally migrate to the modern TypeScript API:
 
 ```typescript
 // NEW: Modern Capacitor API
-import { MeteorWebapp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
 
-await MeteorWebapp.addListener('updateAvailable', (event) => {
+await MeteorWebApp.addListener('updateAvailable', (event) => {
   // Handle update
 });
 ```
@@ -458,7 +457,7 @@ Enable detailed logging in development:
 ```typescript
 export default {
   plugins: {
-    CapacitorMeteorWebapp: {
+    CapacitorMeteorWebApp: {
       serverUrl: 'https://your-meteor-app.com',
       debugLogging: true // Enable detailed logs
     }
@@ -472,7 +471,7 @@ To clear all downloaded versions and reset plugin state:
 
 ```typescript
 // This will clear all cached versions and force re-download
-await MeteorWebapp.resetPlugin();
+await MeteorWebApp.resetPlugin();
 ```
 
 ### File Storage Locations
@@ -494,7 +493,7 @@ Library/NoCloud/meteor/
 The plugin defines specific error types for different failure scenarios:
 
 ```typescript
-enum MeteorWebappError {
+enum MeteorWebAppError {
   DOWNLOAD_FAILED = 'DOWNLOAD_FAILED',
   VALIDATION_FAILED = 'VALIDATION_FAILED',
   BLACKLISTED_VERSION = 'BLACKLISTED_VERSION',
@@ -507,7 +506,7 @@ Handle errors gracefully:
 
 ```typescript
 try {
-  await MeteorWebapp.checkForUpdates();
+  await MeteorWebApp.checkForUpdates();
 } catch (error) {
   if (error.code === 'DOWNLOAD_FAILED') {
     // Handle network issues
