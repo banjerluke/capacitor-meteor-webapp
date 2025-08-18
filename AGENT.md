@@ -9,15 +9,9 @@ This project creates a Capacitor plugin that enables hot code push functionality
 ### Development
 
 - `npm run build` - Build the plugin
-- `npm run test` - Run tests (when implemented)
+- `npm run test` - Run tests (if/when implemented)
 - `npm run lint` - Run ESLint
-- `npm run fmt` - Format code with Prettier
-
-### iOS Development
-
-- Open `ios/` directory in Xcode for native iOS development
-- Use iOS simulator for testing
-- Build and test with example app in `example-app/`
+- `npm run fmt` - Format code with Prettier and SwiftLint - run this before committing changes
 
 ## Project Structure
 
@@ -30,14 +24,12 @@ This project creates a Capacitor plugin that enables hot code push functionality
 - `ios/Sources/CapacitorMeteorWebapp/` - iOS native implementation
 - `android/` - Android implementation (future, not yet implemented)
 
-### Reference Materials
-
-- `reference-plugin-cordova/` - Original Cordova plugin for reference
-- `reference-capgo/` - Capgo CapacitorUpdater plugin for reference
-- `CordovaPluginOverview.md` - Detailed explanation of Cordova plugin architecture
-
 ### Documentation
 
 - `PLAN.md` - Implementation plan and architecture decisions
 - `README.md` - Public documentation
 - This `AGENT.md` - Context for AI agents
+
+## Workflow
+
+There is NO AUTOMATED INTEGRATION TESTING at this time. Rely on the user to test the plugin on real devices and provide you with logs.
