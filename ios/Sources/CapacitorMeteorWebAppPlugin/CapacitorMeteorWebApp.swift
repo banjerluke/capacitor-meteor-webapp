@@ -266,9 +266,11 @@ public protocol CapacitorBridge: AnyObject {
     private func startStartupTimer() {
         // Don't start the startup timer if the app started up in the background
         #if canImport(UIKit)
-            if UIApplication.shared.applicationState == .active {
-                logger.info("App startup timer started")
-                startupTimer?.start(withTimeInterval: startupTimeoutInterval)
+            DispatchQueue.main.async {
+                if UIApplication.shared.applicationState == .active {
+                    self.logger.info("App startup timer started")
+                    self.startupTimer?.start(withTimeInterval: self.startupTimeoutInterval)
+                }
             }
         #else
             logger.info("App startup timer started")
@@ -455,12 +457,7 @@ public protocol CapacitorBridge: AnyObject {
         }
 
         DispatchQueue.main.async {
-            // Prefer Capacitor's reload method if available, otherwise fall back to webView.reload()
-            if let webView = bridge.webView {
-                bridge.reload()
-            } else {
-                self.logger.error("Could not get WebView for reload")
-            }
+            bridge.reload()
         }
     }
 

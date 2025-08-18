@@ -1,4 +1,4 @@
-protocol AssetBundleDownloaderDelegate: class {
+protocol AssetBundleDownloaderDelegate: AnyObject {
   func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
   func assetBundleDownloader(_ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error)
 }
