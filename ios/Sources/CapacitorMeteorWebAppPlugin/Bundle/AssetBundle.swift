@@ -25,8 +25,8 @@ final class AssetBundle {
   let version: String
   let cordovaCompatibilityVersion: String
 
-  private var parentAssetBundle: AssetBundle?
-  private var ownAssetsByURLPath: [String: Asset] = [:]
+  internal var parentAssetBundle: AssetBundle?
+  internal var ownAssetsByURLPath: [String: Asset] = [:]
   private(set) var indexFile: Asset?
 
   var ownAssets: [Asset] {

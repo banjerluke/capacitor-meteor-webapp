@@ -106,6 +106,27 @@ public protocol CapacitorBridge: AnyObject {
         // Setup startup timer
         setupStartupTimer()
     }
+    
+    private func selectCurrentAssetBundle(initialAssetBundle: AssetBundle) {
+        // If a last downloaded version has been set and the asset bundle exists,
+        // we set it as the current asset bundle
+        if let lastDownloadedVersion = configuration.lastDownloadedVersion,
+            let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
+                lastDownloadedVersion)
+        {
+            logger.info("✅ Using downloaded asset bundle version: \(lastDownloadedVersion)")
+            currentAssetBundle = downloadedAssetBundle
+            if configuration.lastKnownGoodVersion != lastDownloadedVersion {
+                startStartupTimer()
+            }
+        } else {
+            if let lastDownloadedVersion = configuration.lastDownloadedVersion {
+                logger.warning("⚠️ Downloaded version \(lastDownloadedVersion) was configured but bundle not found, falling back to initial bundle")
+            }
+            logger.info("📦 Using initial asset bundle version: \(initialAssetBundle.version)")
+            currentAssetBundle = initialAssetBundle
+        }
+    }
 
     private func initializeAssetBundles() throws {
         assetBundleManager = nil
@@ -179,19 +200,8 @@ public protocol CapacitorBridge: AnyObject {
             initialAssetBundle: initialAssetBundle)
         assetBundleManager.delegate = self
 
-        // If a last downloaded version has been set and the asset bundle exists,
-        // we set it as the current asset bundle
-        if let lastDownloadedVersion = configuration.lastDownloadedVersion,
-            let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
-                lastDownloadedVersion)
-        {
-            currentAssetBundle = downloadedAssetBundle
-            if configuration.lastKnownGoodVersion != lastDownloadedVersion {
-                startStartupTimer()
-            }
-        } else {
-            currentAssetBundle = initialAssetBundle
-        }
+        // Select bundle AFTER validation (configuration.lastDownloadedVersion may have been cleared)
+        selectCurrentAssetBundle(initialAssetBundle: initialAssetBundle)
 
         pendingAssetBundle = nil
 

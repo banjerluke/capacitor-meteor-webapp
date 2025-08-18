@@ -14,8 +14,21 @@ public class BundleOrganizer {
         // Create target directory if it doesn't exist
         try fileManager.createDirectory(at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
 
+        // Organize own assets
         for asset in bundle.ownAssets {
             try organizeAsset(asset, in: targetDirectory, fileManager: fileManager)
+        }
+        
+        // Also organize parent assets that this bundle inherits but doesn't override
+        var inheritedAssetsOrganized = 0
+        if let parentBundle = bundle.parentAssetBundle {
+            for parentAsset in parentBundle.ownAssets {
+                // Only organize parent assets that we don't have in our own assets
+                if bundle.ownAssetsByURLPath[parentAsset.urlPath] == nil {
+                    try organizeAsset(parentAsset, in: targetDirectory, fileManager: fileManager)
+                    inheritedAssetsOrganized += 1
+                }
+            }
         }
     }
 
@@ -28,12 +41,6 @@ public class BundleOrganizer {
     private static func organizeAsset(_ asset: Asset, in targetDirectory: URL, fileManager: FileManager) throws {
         let sourceURL = asset.fileURL
         let targetURL = targetURLForAsset(asset, in: targetDirectory)
-
-        print("📁 Organizing asset:")
-        print("   URL path: \(asset.urlPath)")
-        print("   File path: \(asset.filePath)")
-        print("   Source URL: \(sourceURL.path)")
-        print("   Target URL: \(targetURL.path)")
 
         // Ensure the target directory structure exists
         let targetDirectoryURL = targetURL.deletingLastPathComponent()
