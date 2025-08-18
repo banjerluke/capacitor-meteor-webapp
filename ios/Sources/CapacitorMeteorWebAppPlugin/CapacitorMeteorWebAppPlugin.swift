@@ -1,4 +1,5 @@
 import Foundation
+import WebKit
 
 // For standalone compilation without Capacitor dependency
 #if canImport(Capacitor)
@@ -46,10 +47,55 @@ public class CapacitorMeteorWebAppPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "reload", returnType: CAPPluginReturnPromise)
     ]
     private var implementation: CapacitorMeteorWebApp!
+    private var bridgeAdapter: CapacitorBridgeAdapter!
 
     override public func load() {
-        let bridgeAdapter = CapacitorBridgeAdapter(bridge: self.bridge)
+        NSLog("🔧 CapacitorMeteorWebAppPlugin: Loading plugin, bridge: \(String(describing: self.bridge))")
+        
+        bridgeAdapter = CapacitorBridgeAdapter(bridge: self.bridge)
+        NSLog("🔧 CapacitorMeteorWebAppPlugin: Created bridge adapter: \(bridgeAdapter!)")
         implementation = CapacitorMeteorWebApp(capacitorBridge: bridgeAdapter)
+        
+        // Listen for update notifications from the implementation
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleUpdateAvailable(_:)),
+            name: .meteorWebappUpdateAvailable,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleUpdateFailed(_:)),
+            name: .meteorWebappUpdateFailed,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc private func handleUpdateAvailable(_ notification: Notification) {
+        NSLog("🔔 CapacitorMeteorWebAppPlugin: Received updateAvailable notification")
+        guard let userInfo = notification.userInfo,
+              let version = userInfo["version"] as? String else { 
+            NSLog("❌ CapacitorMeteorWebAppPlugin: No version in notification userInfo")
+            return 
+        }
+        
+        NSLog("📱 CapacitorMeteorWebAppPlugin: Notifying JS listeners about version: \(version)")
+        notifyListeners("updateAvailable", data: ["version": version])
+        NSLog("✅ CapacitorMeteorWebAppPlugin: JS notification sent")
+    }
+    
+    @objc private func handleUpdateFailed(_ notification: Notification) {
+        NSLog("🔔 CapacitorMeteorWebAppPlugin: Received updateFailed notification")
+        guard let userInfo = notification.userInfo,
+              let errorMessage = userInfo["error"] as? String else { return }
+        
+        NSLog("📱 CapacitorMeteorWebAppPlugin: Notifying JS listeners about error: \(errorMessage)")
+        notifyListeners("error", data: ["message": errorMessage])
     }
 
     @objc func checkForUpdates(_ call: CAPPluginCall) {

@@ -29,6 +29,12 @@ public class BundleOrganizer {
         let sourceURL = asset.fileURL
         let targetURL = targetURLForAsset(asset, in: targetDirectory)
 
+        print("📁 Organizing asset:")
+        print("   URL path: \(asset.urlPath)")
+        print("   File path: \(asset.filePath)")
+        print("   Source URL: \(sourceURL.path)")
+        print("   Target URL: \(targetURL.path)")
+
         // Ensure the target directory structure exists
         let targetDirectoryURL = targetURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: targetDirectoryURL, withIntermediateDirectories: true, attributes: nil)
@@ -44,7 +50,7 @@ public class BundleOrganizer {
                 print("DEBUG: Skipping missing TypeScript declaration file: \(asset.urlPath)")
                 return
             }
-            print("DEBUG: Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
+            print("❌ Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
             throw WebAppError.fileSystemError(reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
         }
 

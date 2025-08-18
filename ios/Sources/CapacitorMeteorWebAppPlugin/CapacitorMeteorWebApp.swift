@@ -2,6 +2,12 @@ import Foundation
 import WebKit
 import os.log
 
+// MARK: - Notification Names
+extension Notification.Name {
+    static let meteorWebappUpdateAvailable = Notification.Name("MeteorWebappUpdateAvailable")
+    static let meteorWebappUpdateFailed = Notification.Name("MeteorWebappUpdateFailed")
+}
+
 // Protocol for Capacitor bridge to avoid direct dependency
 public protocol CapacitorBridge: AnyObject {
     func setServerBasePath(_ path: String)
@@ -62,7 +68,7 @@ public protocol CapacitorBridge: AnyObject {
 
     // MARK: - Initialization
 
-    public init(capacitorBridge: CapacitorBridge? = nil) {
+    init(capacitorBridge: CapacitorBridge? = nil) {
         super.init()
 
         self.capacitorBridge = capacitorBridge
@@ -568,10 +574,24 @@ public protocol CapacitorBridge: AnyObject {
     // MARK: - Event Notifications
 
     private func notifyUpdateAvailable(version: String) {
-        // Can be overridden by subclasses or used by plugin bridge
+        logger.info("📢 Posting NotificationCenter event for update available: \(version)")
+        // Notify the Capacitor plugin bridge about update availability
+        NotificationCenter.default.post(
+            name: .meteorWebappUpdateAvailable,
+            object: nil,
+            userInfo: ["version": version]
+        )
+        logger.info("✅ NotificationCenter event posted successfully")
     }
 
     private func notifyUpdateFailed(error: Error) {
-        // Can be overridden by subclasses or used by plugin bridge
+        logger.error("📢 Posting NotificationCenter event for update failed: \(error.localizedDescription)")
+        // Notify the Capacitor plugin bridge about update failure
+        NotificationCenter.default.post(
+            name: .meteorWebappUpdateFailed,
+            object: nil,
+            userInfo: ["error": error.localizedDescription]
+        )
+        logger.info("✅ NotificationCenter error event posted")
     }
 }
