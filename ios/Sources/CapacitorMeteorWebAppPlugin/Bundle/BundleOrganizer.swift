@@ -8,7 +8,7 @@ public class BundleOrganizer {
     ///   - bundle: The asset bundle to organize
     ///   - targetDirectory: The directory where files should be organized
     /// - Throws: WebAppError if organization fails
-    public static func organizeBundle(_ bundle: AssetBundle, in targetDirectory: URL) throws {
+    static func organizeBundle(_ bundle: AssetBundle, in targetDirectory: URL) throws {
         let fileManager = FileManager.default
 
         // Create target directory if it doesn't exist
@@ -61,7 +61,7 @@ public class BundleOrganizer {
     ///   - asset: The asset
     ///   - targetDirectory: The target directory
     /// - Returns: The URL where the asset should be placed
-    public static func targetURLForAsset(_ asset: Asset, in targetDirectory: URL) -> URL {
+    static func targetURLForAsset(_ asset: Asset, in targetDirectory: URL) -> URL {
         // Remove leading slash from URL path to make it relative
         var relativePath = asset.urlPath
         if relativePath.hasPrefix("/") {
@@ -81,7 +81,7 @@ public class BundleOrganizer {
     ///   - bundle: The bundle to analyze
     ///   - targetDirectory: The target directory
     /// - Throws: WebAppError if directory creation fails
-    public static func createDirectoryStructure(for bundle: AssetBundle, in targetDirectory: URL) throws {
+    static func createDirectoryStructure(for bundle: AssetBundle, in targetDirectory: URL) throws {
         let fileManager = FileManager.default
 
         // Create the target directory itself
@@ -104,7 +104,7 @@ public class BundleOrganizer {
     /// Validates that all assets in a bundle can be properly organized
     /// - Parameter bundle: The bundle to validate
     /// - Returns: Array of validation errors (empty if valid)
-    public static func validateBundleOrganization(_ bundle: AssetBundle) -> [String] {
+    static func validateBundleOrganization(_ bundle: AssetBundle) -> [String] {
         var errors: [String] = []
         var urlPaths: Set<String> = []
 

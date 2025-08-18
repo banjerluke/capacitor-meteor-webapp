@@ -1,11 +1,6 @@
-import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
-
-protocol AssetBundleDownloaderDelegate: AnyObject {
-    func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
-    func assetBundleDownloader(_ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error)
+protocol AssetBundleDownloaderDelegate: class {
+  func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
+  func assetBundleDownloader(_ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error)
 }
 
 final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate, URLSessionDownloadDelegate, NetworkReachabilityManagerDelegate {
@@ -39,15 +34,13 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         case invalid
     }
 
-    private var status: Status = .suspended
+  private var status: Status = .suspended
 
-    #if canImport(UIKit)
-    private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
-    #endif
+  private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
 
-    init(configuration: WebAppConfiguration, assetBundle: AssetBundle, baseURL: URL, missingAssets: Set<Asset>) {
-        self.configuration = configuration
-        self.assetBundle = assetBundle
+  init(configuration: WebAppConfiguration, assetBundle: AssetBundle, baseURL: URL, missingAssets: Set<Asset>) {
+    self.configuration = configuration
+    self.assetBundle = assetBundle
         self.baseURL = baseURL
         self.missingAssets = missingAssets
 
@@ -87,9 +80,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
             _ = networkReachabilityManager?.startMonitoring()
         }
 
-        #if canImport(UIKit)
         NotificationCenter.default.addObserver(self, selector: #selector(AssetBundleDownloader.applicationWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
-        #endif
     }
 
     deinit {
@@ -98,7 +89,6 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     func resume() {
         queue.async {
-            #if canImport(UIKit)
             if self.backgroundTask == UIBackgroundTaskIdentifier.invalid {
                 NSLog("Start downloading assets from bundle with version: \(self.assetBundle.version)")
 
@@ -111,9 +101,6 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                     self.endBackgroundTask()
                 }
             }
-            #else
-            NSLog("Start downloading assets from bundle with version: \(self.assetBundle.version)")
-            #endif
 
             self.status = .running
 
@@ -182,13 +169,11 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     }
 
     private func endBackgroundTask() {
-        #if canImport(UIKit)
         let application = UIApplication.shared
         if backgroundTask != UIBackgroundTaskIdentifier.invalid {
             application.endBackgroundTask(backgroundTask)
             self.backgroundTask = UIBackgroundTaskIdentifier.invalid
         }
-        #endif
     }
 
     func cancel() {
@@ -198,7 +183,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     }
 
     private func _cancel() {
-        if self.status != .canceling && self.status != .invalid {
+    if self.status != .canceling || self.status == .invalid {
             self.status = .canceling
             self.session.invalidateAndCancel()
             self.endBackgroundTask()
@@ -223,13 +208,11 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     // MARK: Application State Notifications
 
-    #if canImport(UIKit)
     @objc func applicationWillEnterForeground() {
         if status == .suspended {
             resume()
         }
     }
-    #endif
 
     // MARK: NetworkReachabilityManagerDelegate
 

@@ -168,7 +168,7 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
 
                 let manifestFileURL = self.downloadDirectoryURL.appendingPathComponent("program.json")
                 if !((try? data.write(to: manifestFileURL, options: [])) != nil) {
-                    self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not write asset manifest to: \(manifestFileURL)", underlyingError: nil))
+          self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not write asset manifest to: \(manifestFileURL)", underlyingError: error))
                     return
                 }
 

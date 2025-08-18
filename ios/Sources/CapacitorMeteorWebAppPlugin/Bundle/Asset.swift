@@ -1,53 +1,38 @@
-import Foundation
+struct Asset {
+  let bundle: AssetBundle
+  let filePath: String
+  var fileURL: URL {
+    return bundle.directoryURL.appendingPathComponent(filePath, isDirectory: false)
+  }
+  let urlPath: String
+  let fileType: String?
+  let cacheable: Bool
+  let hash: String?
+  let sourceMapURLPath: String?
 
-/// Represents a single asset file within a Meteor app bundle
-public struct Asset {
-    public let bundle: AssetBundle
-    public let filePath: String
-    public let urlPath: String
-    public let fileType: String?
-    public let cacheable: Bool
-    public let hash: String?
-    public let sourceMapURLPath: String?
-
-    /// The file URL for this asset within the bundle directory
-    public var fileURL: URL {
-        return bundle.directoryURL.appendingPathComponent(filePath, isDirectory: false)
-    }
-
-    public init(bundle: AssetBundle, filePath: String, urlPath: String,
-                fileType: String? = nil, cacheable: Bool, hash: String? = nil,
-                sourceMapURLPath: String? = nil) {
-        self.bundle = bundle
-        self.filePath = filePath
-        self.urlPath = urlPath
-        self.fileType = fileType
+  init(bundle: AssetBundle, filePath: String, urlPath: String, fileType: String? = nil,
+      cacheable: Bool, hash: String? = nil, sourceMapURLPath: String? = nil) {
+    self.bundle = bundle
+    self.filePath = filePath
+    self.urlPath = urlPath
+    self.fileType = fileType
         self.cacheable = cacheable
         self.hash = hash
         self.sourceMapURLPath = sourceMapURLPath
     }
 }
 
-// MARK: - CustomStringConvertible
-
 extension Asset: CustomStringConvertible {
-    public var description: String {
-        return urlPath
-    }
+  var description: String {
+    return urlPath
+  }
 }
 
-// MARK: - Hashable & Equatable
-
-extension Asset: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(ObjectIdentifier(bundle))
-        hasher.combine(urlPath)
-    }
+extension Asset: Hashable, Equatable {
+  var hashValue: Int { return ObjectIdentifier(bundle).hashValue ^ urlPath.hashValue }
 }
 
-extension Asset: Equatable {
-    public static func ==(lhs: Asset, rhs: Asset) -> Bool {
-        return ObjectIdentifier(lhs.bundle) == ObjectIdentifier(rhs.bundle) &&
-            lhs.urlPath == rhs.urlPath
-    }
+func ==(lhs: Asset, rhs: Asset) -> Bool {
+  return ObjectIdentifier(lhs.bundle) == ObjectIdentifier(rhs.bundle)
+    && lhs.urlPath == rhs.urlPath
 }
