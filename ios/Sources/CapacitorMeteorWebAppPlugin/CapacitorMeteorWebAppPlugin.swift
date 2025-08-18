@@ -23,6 +23,11 @@ class CapacitorBridgeAdapter: CapacitorBridge {
     var webView: WKWebView? {
         return bridge?.webView
     }
+    
+    func reload() {
+        // CAPBridgeProtocol doesn't have a reload method, so we reload the webView directly
+        bridge?.webView?.reload()
+    }
 }
 
 /**

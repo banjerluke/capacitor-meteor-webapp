@@ -35,6 +35,16 @@ public class BundleOrganizer {
 
         // Check if source file exists
         guard fileManager.fileExists(atPath: sourceURL.path) else {
+            // Skip missing source map and TypeScript declaration files silently (they may be excluded)
+            if asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map" {
+                print("DEBUG: Skipping missing source map file: \(asset.urlPath)")
+                return
+            }
+            if asset.urlPath.hasSuffix(".d.ts") || asset.fileURL.pathExtension == "d.ts" {
+                print("DEBUG: Skipping missing TypeScript declaration file: \(asset.urlPath)")
+                return
+            }
+            print("DEBUG: Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
             throw WebAppError.fileSystemError(reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
         }
 

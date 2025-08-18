@@ -1,3 +1,5 @@
+import Foundation
+
 struct AssetManifest {
   struct Entry {
     let filePath: String
@@ -55,7 +57,10 @@ struct AssetManifest {
           let sourceMapPath = entryJSON["sourceMap"] as? String
           let sourceMapURLPath = entryJSON["sourceMapUrl"] as? String
 
-          let entry = Entry(filePath: filePath, URLPath: URLPath,
+          // Remove "app/" prefix from filePath; Cordova-Capacitor difference
+          let adjustedFilePath = filePath.hasPrefix("app/") ? String(filePath.dropFirst(4)) : filePath
+
+          let entry = Entry(filePath: adjustedFilePath, URLPath: URLPath,
             fileType: fileType, cacheable: cacheable, hash: hash,
             sourceMapPath: sourceMapPath, sourceMapURLPath: sourceMapURLPath)
           entries.append(entry)

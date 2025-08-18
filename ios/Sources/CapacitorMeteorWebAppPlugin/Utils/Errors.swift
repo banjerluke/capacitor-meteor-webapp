@@ -30,3 +30,42 @@ func errorMessageWithReason(_ reason: String, underlyingError: Error?) -> String
         return reason
     }
 }
+
+/// Errors specific to the hot code push functionality
+public enum HotCodePushError: Error, LocalizedError {
+    case noPendingVersion
+    case noRootURLConfigured
+    case bridgeUnavailable
+    case initializationFailed(reason: String)
+    case bundleOrganizationFailed(reason: String, underlyingError: Error?)
+    case webViewUnavailable
+    case downloadFailed(reason: String, underlyingError: Error?)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .noPendingVersion:
+            return "No pending version available to switch to"
+        case .noRootURLConfigured:
+            return "Root URL must be configured before checking for updates"
+        case .bridgeUnavailable:
+            return "Capacitor bridge is not available"
+        case .initializationFailed(let reason):
+            return "Failed to initialize: \(reason)"
+        case .bundleOrganizationFailed(let reason, _):
+            return "Failed to organize bundle: \(reason)"
+        case .webViewUnavailable:
+            return "WebView is not available"
+        case .downloadFailed(let reason, _):
+            return "Download failed: \(reason)"
+        }
+    }
+    
+    public var underlyingError: Error? {
+        switch self {
+        case .bundleOrganizationFailed(_, let error), .downloadFailed(_, let error):
+            return error
+        default:
+            return nil
+        }
+    }
+}
