@@ -254,9 +254,15 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     // MARK: URLSessionDataDelegate
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        if status == .canceling { return }
+        if status == .canceling { 
+            completionHandler(.cancel)
+            return 
+        }
 
-        guard let response = response as? HTTPURLResponse else { return }
+        guard let response = response as? HTTPURLResponse else { 
+            completionHandler(.cancel)
+            return 
+        }
 
         if let asset = assetsDownloadingByTaskIdentifier[dataTask.taskIdentifier] {
             do {
@@ -266,6 +272,9 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                 completionHandler(.cancel)
                 self.cancelAndFailWithError(error)
             }
+        } else {
+            // No asset found for this task
+            completionHandler(.cancel)
         }
     }
 
