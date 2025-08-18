@@ -18,7 +18,7 @@ public class BundleOrganizer {
         for asset in bundle.ownAssets {
             try organizeAsset(asset, in: targetDirectory, fileManager: fileManager)
         }
-        
+
         // Also organize parent assets that this bundle inherits but doesn't override
         var inheritedAssetsOrganized = 0
         if let parentBundle = bundle.parentAssetBundle {
@@ -48,13 +48,8 @@ public class BundleOrganizer {
 
         // Check if source file exists
         guard fileManager.fileExists(atPath: sourceURL.path) else {
-            // Skip missing source map and TypeScript declaration files silently (they may be excluded)
             if asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map" {
-                print("DEBUG: Skipping missing source map file: \(asset.urlPath)")
-                return
-            }
-            if asset.urlPath.hasSuffix(".d.ts") || asset.fileURL.pathExtension == "d.ts" {
-                print("DEBUG: Skipping missing TypeScript declaration file: \(asset.urlPath)")
+                // Skip missing source maps - they may not be served in production
                 return
             }
             print("❌ Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")

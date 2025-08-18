@@ -232,8 +232,13 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
                 do {
                     try fileManager.linkItem(at: cachedAsset.fileURL, to: asset.fileURL)
                 } catch {
-                    self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not link to cached asset", underlyingError: error))
-                    return
+                    // Allow missing source map files to be skipped since they may not be served in production
+                    if asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map" {
+                        // Skip this asset and continue processing
+                    } else {
+                        self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not link to cached asset \(asset.urlPath)", underlyingError: error))
+                        return
+                    }
                 }
             } else {
                 missingAssets.insert(asset)
