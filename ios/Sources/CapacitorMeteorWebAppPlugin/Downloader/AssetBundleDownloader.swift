@@ -192,10 +192,15 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     private func cancelAndFailWithReason(_ reason: String, underlyingError: Error? = nil) {
         let error = WebAppError.downloadFailure(reason: reason, underlyingError: underlyingError)
+        print("🚨 Download failure - Reason: \(reason)")
+        if let underlyingError = underlyingError {
+            print("   Underlying error: \(underlyingError)")
+        }
         cancelAndFailWithError(error)
     }
 
     private func cancelAndFailWithError(_ error: Error) {
+        print("🚨 Download failed with error: \(error)")
         _cancel()
         delegate?.assetBundleDownloader(self, didFailWithError: error)
     }
@@ -267,7 +272,21 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         if let asset = assetsDownloadingByTaskIdentifier[dataTask.taskIdentifier] {
             do {
                 try verifyResponse(response, forAsset: asset)
-                completionHandler(.becomeDownload)
+                
+                // Check if this was a 404 for a source map that we're ignoring
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 404 && 
+                   (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
+                    // Mark this asset as complete and don't download
+                    assetsDownloadingByTaskIdentifier.removeValue(forKey: dataTask.taskIdentifier)
+                    missingAssets.remove(asset)
+                    if missingAssets.isEmpty {
+                        didFinish()
+                    }
+                    completionHandler(.cancel)
+                } else {
+                    completionHandler(.becomeDownload)
+                }
             } catch {
                 completionHandler(.cancel)
                 self.cancelAndFailWithError(error)
@@ -335,6 +354,13 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     private func verifyResponse(_ response: HTTPURLResponse, forAsset asset: Asset) throws {
         // A response with a non-success status code should not be considered a succesful download
         if !response.isSuccessful {
+            // Allow 404s for source map files since they may not be served in production
+            if response.statusCode == 404 && (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
+                print("⚠️ 404 for source map file (expected): \(asset.urlPath)")
+                return // Don't throw error, just skip this file
+            }
+            
+            print("❌ Non-success status code: \(response.statusCode)")
             throw WebAppError.downloadFailure(reason: "Non-success status code \(response.statusCode) for asset: \(asset)", underlyingError: nil)
             // If we have a hash for the asset, and the ETag header also specifies
             // a hash, we compare these to verify if we received the expected asset version
@@ -345,8 +371,11 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
             let ETag = response.allHeaderFields["Etag"] as? String,
             let actualHash = SHA1HashFromETag(ETag),
             actualHash != expectedHash {
+            print("❌ Hash mismatch - Expected: \(expectedHash), Actual: \(actualHash)")
             throw WebAppError.downloadFailure(reason: "Hash mismatch for asset: \(asset)", underlyingError: nil)
         }
+        
+        print("✅ Response verification passed for: \(asset.urlPath)")
     }
 
     private func verifyRuntimeConfig(_ runtimeConfig: AssetBundle.RuntimeConfig) throws {
