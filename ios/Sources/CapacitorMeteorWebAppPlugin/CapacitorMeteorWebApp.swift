@@ -122,9 +122,8 @@ public protocol CapacitorBridge: AnyObject {
         // If a last downloaded version has been set and the asset bundle exists,
         // we set it as the current asset bundle
         if let lastDownloadedVersion = configuration.lastDownloadedVersion,
-            let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
-                lastDownloadedVersion)
-        {
+           let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
+            lastDownloadedVersion) {
             logger.info("✅ Using downloaded asset bundle version: \(lastDownloadedVersion)")
             currentAssetBundle = downloadedAssetBundle
             if configuration.lastKnownGoodVersion != lastDownloadedVersion {
@@ -277,18 +276,13 @@ public protocol CapacitorBridge: AnyObject {
     }
 
     private func startStartupTimer() {
-        // Don't start the startup timer if the app started up in the background
-        #if canImport(UIKit)
-            DispatchQueue.main.async {
-                if UIApplication.shared.applicationState == .active {
-                    self.logger.info("App startup timer started")
-                    self.startupTimer?.start(withTimeInterval: self.startupTimeoutInterval)
-                }
+        DispatchQueue.main.async {
+            // Don't start the startup timer if the app started up in the background
+            if UIApplication.shared.applicationState == .active {
+                self.logger.info("App startup timer started")
+                self.startupTimer?.start(withTimeInterval: self.startupTimeoutInterval)
             }
-        #else
-            logger.info("App startup timer started")
-            startupTimer?.start(withTimeInterval: startupTimeoutInterval)
-        #endif
+        }
     }
 
     // MARK: - Public Methods
@@ -489,9 +483,8 @@ public protocol CapacitorBridge: AnyObject {
 
         // If there is a last known good version and we can load the bundle, revert to it
         if let lastKnownGoodVersion = configuration.lastKnownGoodVersion,
-            let lastKnownGoodAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
-                lastKnownGoodVersion)
-        {
+           let lastKnownGoodAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
+            lastKnownGoodVersion) {
             pendingAssetBundle = lastKnownGoodAssetBundle
             // Else, revert to the initial asset bundle, unless that is what we are currently serving
         } else if currentAssetBundle.version != assetBundleManager.initialAssetBundle.version {
@@ -551,8 +544,7 @@ public protocol CapacitorBridge: AnyObject {
     ) -> Bool {
         // No need to redownload the current or the pending version
         if currentAssetBundle.version == manifest.version
-            || pendingAssetBundle?.version == manifest.version
-        {
+            || pendingAssetBundle?.version == manifest.version {
             return false
         }
 
