@@ -74,17 +74,122 @@ public class BundleOrganizer {
             try fileManager.removeItem(at: targetURL)
         }
 
-        // Try to create hard link first (for efficiency), fall back to copy
-        do {
-            try fileManager.linkItem(at: sourceURL, to: targetURL)
-        } catch {
-            // Hard link failed, try copying instead
+        if asset.urlPath == "/" || asset.urlPath == "/index.html"
+
+            || sourceURL.lastPathComponent == "index.html" {
+            // Special handling for index.html - inject WebAppLocalServer shim
+            try organizeIndexHtml(sourceURL: sourceURL, targetURL: targetURL)
+        } else {
+            // Try to create hard link first (for efficiency), fall back to copy
             do {
-                try fileManager.copyItem(at: sourceURL, to: targetURL)
+                try fileManager.linkItem(at: sourceURL, to: targetURL)
             } catch {
-                throw WebAppError.fileSystemError(
-                    reason: "Failed to organize asset \(asset.urlPath)", underlyingError: error)
+                // Hard link failed, try copying instead
+                do {
+                    try fileManager.copyItem(at: sourceURL, to: targetURL)
+                } catch {
+                    throw WebAppError.fileSystemError(
+                        reason: "Failed to organize asset \(asset.urlPath)", underlyingError: error)
+                }
             }
+        }
+    }
+
+    /// Special handling for index.html files to inject WebAppLocalServer shim
+    /// - Parameters:
+    ///   - sourceURL: Source index.html file
+    ///   - targetURL: Target location for the modified index.html
+    /// - Throws: WebAppError if processing fails
+    private static func organizeIndexHtml(sourceURL: URL, targetURL: URL) throws {
+        print("🔧 BundleOrganizer: Injecting WebAppLocalServer shim into index.html")
+
+        // Read the original HTML content
+        let originalContent: String
+        do {
+            originalContent = try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            throw WebAppError.fileSystemError(
+                reason: "Failed to read index.html content", underlyingError: error)
+        }
+
+        // WebAppLocalServer compatibility shim for Capacitor
+        // Provides the same API as cordova-plugin-meteor-webapp
+        let shimScript = """
+            <script>
+            (function() {
+                if (window.WebAppLocalServer) return;
+
+                if (window.Capacitor) {
+                    setupWebAppLocalServer();
+                } else {
+                    document.addEventListener('deviceready', function() {
+                        setupWebAppLocalServer();
+                    });
+                }
+
+                function setupWebAppLocalServer() {
+                    const P = ((window.Capacitor || {}).Plugins || {}).CapacitorMeteorWebApp;
+                    if (!P) {
+                        throw new Error('WebAppLocalServer shim: CapacitorMeteorWebApp plugin not available');
+                    }
+
+                    window.WebAppLocalServer = {
+                        startupDidComplete(callback) {
+                            P.startupDidComplete()
+                            .then(() => { if (callback) callback(); })
+                            .catch((error) => { console.error('WebAppLocalServer.startupDidComplete() failed:', error); });
+                        },
+
+                        checkForUpdates(callback) {
+                            P.checkForUpdates()
+                            .then(() => { if (callback) callback(); })
+                            .catch((error) => { console.error('WebAppLocalServer.checkForUpdates() failed:', error); });
+                        },
+
+                        onNewVersionReady(callback) {
+                            P.addListener('updateAvailable', callback);
+                        },
+
+                        switchToPendingVersion(callback, errorCallback) {
+                            P.reload()
+                            .then(() => { if (callback) callback(); })
+                            .catch((error) => {
+                                console.error('switchToPendingVersion failed:', error);
+                                if (typeof errorCallback === 'function') errorCallback(error);
+                            });
+                        },
+
+                        onError(callback) {
+                            P.addListener('error', (event) => {
+                                const error = new Error(event.message || 'Unknown CapacitorMeteorWebApp error');
+                                callback(error);
+                            });
+                        },
+
+                        localFileSystemUrl(_fileUrl) {
+                            throw new Error('Local filesystem URLs not supported by Capacitor');
+                        },
+                    };
+                }
+            })();
+            </script>
+        """
+
+        // Inject the shim before closing </head> tag, or before </body> if no head
+        let modifiedContent: String
+        if let headCloseRange = originalContent.range(of: "</head>", options: .caseInsensitive) {
+            modifiedContent = originalContent.replacingCharacters(in: headCloseRange, with: shimScript + "\n</head>")
+        } else if let bodyCloseRange = originalContent.range(of: "</body>", options: .caseInsensitive) {
+            modifiedContent = originalContent.replacingCharacters(in: bodyCloseRange, with: shimScript + "\n</body>")
+        } else {
+            // Just append to the end if we can't find head or body tags
+            modifiedContent = originalContent + shimScript
+        }
+
+        do {
+            try modifiedContent.write(to: targetURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WebAppError.fileSystemError(reason: "Failed to write modified index.html", underlyingError: error)
         }
     }
 

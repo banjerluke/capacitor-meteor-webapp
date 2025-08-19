@@ -1,7 +1,7 @@
 Package.describe({
   name: 'banjerluke:capacitor-meteor-webapp-shim',
-  version: '0.1.1',
-  summary: 'Shims WebAppLocalServer to use the @banjerluke/capacitor-meteor-webapp plugin.',
+  version: '0.1.2',
+  summary: 'No longer needed - @banjerluke/capacitor-meteor-webapp injects this directly.',
   git: 'https://github.com/banjerluke/capacitor-meteor-webapp',
   documentation: 'README.md',
 });

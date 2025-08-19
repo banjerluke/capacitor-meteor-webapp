@@ -2,7 +2,7 @@
 
 A Capacitor plugin that brings hot code push functionality to Meteor apps, allowing over-the-air updates without going through app stores. This is a direct port of the proven `cordova-plugin-meteor-webapp` for the Capacitor ecosystem.
 
-Works with existing Meteor Cordova apps after also installing the `banjerluke:capacitor-meteor-webapp-shim` Meteor package to shim `WebAppLocalServer` on `window`.
+Works with existing Meteor Cordova apps by shimming the `window.WebAppLocalServer` API that `cordova-plugin-meteor-webapp` provides and Meteor assumes is present.
 
 # WARNING 🚨 This is a brand new, work-in-progress plugin! Don't use it for anything without extensively testing it. I will remove this notice when I've had a chance to test it more thoroughly.
 
@@ -35,9 +35,6 @@ meteor npm i @capacitor/android   # Note, this plugin does not support Android y
 
 # Install Capacitor plugin
 meteor npm install @banjerluke/capacitor-meteor-webapp
-
-# Install shim package (you'll get missing WebAppLocalServer errors without this)
-meteor add banjerluke:capacitor-meteor-webapp-shim
 
 # Init Capacitor
 # Enter your name and bundle ID as in mobile-config.js
@@ -96,7 +93,7 @@ See `build-and-sync-capacitor.sh` in this repository for a build script that you
 
 ## Cordova Compatibility
 
-The `banjerluke:capacitor-meteor-webapp-shim` package installs a shim for the `WebAppLocalServer` object on `window` that is provided by Cordova's `cordova-plugin-meteor-webapp`, bridging the old API to the new Capacitor plugin.
+As part of "organizing" the bundle (putting files where the app expects them to be served), the native code installs a shim for the `WebAppLocalServer` object on `window` that is provided by Cordova's `cordova-plugin-meteor-webapp`, bridging the old API to the new Capacitor plugin.
 
 The only exception is `WebAppLocalServer.localFileSystemUrl()`. Since we're no longer embedding our own local web server, we can't hijack `/local-filesystem` URLs to serve local files. If you need this functionality, I recommend looking into [@capacitor/filesystem](https://capacitorjs.com/docs/apis/filesystem) instead.
 
