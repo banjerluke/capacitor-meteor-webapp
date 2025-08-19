@@ -1,6 +1,6 @@
 {
   "name": "@banjerluke/capacitor-meteor-webapp",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Port of cordova-plugin-meteor-webapp for Capacitor",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
