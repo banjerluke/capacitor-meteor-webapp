@@ -22,7 +22,7 @@ A Capacitor plugin that brings hot code push functionality to Meteor apps, allow
 ## Installation
 
 ```bash
-npm install @strummachine/capacitor-meteor-webapp
+npm install @banjerluke/capacitor-meteor-webapp
 npx cap sync
 ```
 
@@ -102,7 +102,7 @@ interface UpdateCompleteEvent {
 Manually checks the Meteor server for new versions and downloads them if available.
 
 ```typescript
-import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@banjerluke/capacitor-meteor-webapp';
 
 await MeteorWebApp.checkForUpdates();
 ```
@@ -197,7 +197,7 @@ if (newVersion) {
 ### Basic Setup
 
 ```typescript
-import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@banjerluke/capacitor-meteor-webapp';
 
 export class App {
   async ngOnInit() {
@@ -221,7 +221,7 @@ export class App {
 ### Advanced Update Flow
 
 ```typescript
-import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@banjerluke/capacitor-meteor-webapp';
 
 class UpdateManager {
   private isUpdating = false;
@@ -282,7 +282,7 @@ class UpdateManager {
 
 ```typescript
 import { useEffect, useState } from 'react';
-import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@banjerluke/capacitor-meteor-webapp';
 
 export function useHotCodePush() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -377,7 +377,7 @@ The plugin automatically handles failures:
 cordova plugin remove cordova-plugin-meteor-webapp
 
 # Install Capacitor plugin  
-npm install @strummachine/capacitor-meteor-webapp
+npm install @banjerluke/capacitor-meteor-webapp
 npx cap sync
 ```
 
@@ -418,7 +418,7 @@ Optionally migrate to the modern TypeScript API:
 
 ```typescript
 // NEW: Modern Capacitor API
-import { MeteorWebApp } from '@strummachine/capacitor-meteor-webapp';
+import { MeteorWebApp } from '@banjerluke/capacitor-meteor-webapp';
 
 await MeteorWebApp.addListener('updateAvailable', (event) => {
   // Handle update

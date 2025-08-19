@@ -1,4 +1,4 @@
-package com.strummachine.capacitormeteorwebapp;
+package com.banjerluke.capacitormeteorwebapp;
 
 import com.getcapacitor.Logger;
 

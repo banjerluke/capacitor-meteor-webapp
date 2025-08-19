@@ -16,18 +16,18 @@ This plan outlines the implementation of a Capacitor plugin that replicates the 
 ## Architecture Overview
 
 ### Reference Implementation
-This Capacitor plugin is based on the existing Cordova plugin located in [`reference-plugin-cordova/src/ios/`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/). The core algorithms, state management, and download logic will be preserved while adapting the integration layer for Capacitor.
+This Capacitor plugin is based on the existing Cordova plugin located in [`reference-plugin-cordova/src/ios/`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/). The core algorithms, state management, and download logic will be preserved while adapting the integration layer for Capacitor.
 
 **Key Reference Files:**
-- [`WebAppLocalServer.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift) - Main plugin logic and HTTP server
-- [`AssetBundleManager.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift) - Download coordination
-- [`AssetBundleDownloader.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift) - Individual file downloads  
-- [`WebAppConfiguration.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift) - Persistent state management
-- [`AssetBundle.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundle.swift) - Bundle representation
-- [`AssetManifest.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetManifest.swift) - Manifest parsing
-- [`Asset.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Asset.swift) - Asset model
-- [`Errors.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Errors.swift) - Error definitions
-- [`Utility.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Utility.swift) - Helper functions
+- [`WebAppLocalServer.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift) - Main plugin logic and HTTP server
+- [`AssetBundleManager.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift) - Download coordination
+- [`AssetBundleDownloader.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift) - Individual file downloads  
+- [`WebAppConfiguration.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift) - Persistent state management
+- [`AssetBundle.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundle.swift) - Bundle representation
+- [`AssetManifest.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetManifest.swift) - Manifest parsing
+- [`Asset.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Asset.swift) - Asset model
+- [`Errors.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Errors.swift) - Error definitions
+- [`Utility.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Utility.swift) - Helper functions
 
 ### Core Components
 
@@ -52,16 +52,16 @@ This Capacitor plugin is based on the existing Cordova plugin located in [`refer
 ### Key Differences from Cordova Implementation
 
 #### Capacitor Integration
-- Use Capacitor's native bridge instead of Cordova's CDVPlugin (replace [`METPlugin`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/METPlugin.h) inheritance)
-- Leverage Capacitor's `setServerBasePath()` instead of custom HTTP server (replaces [`GCDWebServer` usage in WebAppLocalServer.swift](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L385-L411))
+- Use Capacitor's native bridge instead of Cordova's CDVPlugin (replace [`METPlugin`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/METPlugin.h) inheritance)
+- Leverage Capacitor's `setServerBasePath()` instead of custom HTTP server (replaces [`GCDWebServer` usage in WebAppLocalServer.swift](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L385-L411))
 - Follow Capacitor plugin patterns and conventions
-- Use Capacitor's configuration system and preferences (instead of [`commandDelegate?.settings`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L88-L97))
+- Use Capacitor's configuration system and preferences (instead of [`commandDelegate?.settings`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L88-L97))
 
 #### Bundle Management  
 - Keep the same individual file download approach as Cordova (not ZIP-based like Capgo)
 - Store bundles in `Library/NoCloud/meteor/<version>/` (iOS) - same as Cordova
-- Use same version state management as [`WebAppConfiguration.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift)
-- Organize files to match exact URL paths from manifest (same [`URLPathByRemovingQueryString` approach](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Utility.swift#L12-L17))
+- Use same version state management as [`WebAppConfiguration.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift)
+- Organize files to match exact URL paths from manifest (same [`URLPathByRemovingQueryString` approach](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Utility.swift#L12-L17))
 
 #### JavaScript Interface
 - Export TypeScript definitions for type safety
@@ -128,7 +128,7 @@ declare global {
 ```
 
 #### 1.3 Version State Management
-Use NSUserDefaults/Capacitor preferences (following exact Cordova pattern from [`reference-plugin-cordova/src/ios/WebAppConfiguration.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift)):
+Use NSUserDefaults/Capacitor preferences (following exact Cordova pattern from [`reference-plugin-cordova/src/ios/WebAppConfiguration.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift)):
 
 ```swift
 // Persistent state keys (following Cordova pattern exactly)
@@ -156,21 +156,21 @@ State management logic (following Cordova exactly):
 - Cleanup strategy: Remove old versions after successful startup (keep lastKnownGood)
 
 #### 2.2 Manifest Processing & File Organization
-- Parse JSON manifest with file hashes and URL mappings (based on [`AssetManifest.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetManifest.swift))
+- Parse JSON manifest with file hashes and URL mappings (based on [`AssetManifest.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetManifest.swift))
 - **BundleOrganizer** logic: For each manifest entry `{ path: "file.js", url: "/path/file.js?hash=abc" }`
-  - Strip query parameters from URL (using [`URLPathByRemovingQueryString` from Utility.swift](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Utility.swift#L12-L17))
+  - Strip query parameters from URL (using [`URLPathByRemovingQueryString` from Utility.swift](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/Utility.swift#L12-L17))
   - Create directory structure to match URL path
   - Place file at exact URL path location
 - Handle duplicate URLs pointing to same file (copy/symlink as needed)
 
 #### 2.3 Download System
-- Parallel individual file downloads using URLSession (exactly like Cordova [`AssetBundleDownloader.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift))
-- Download asset manifest first, then missing individual files (like [`AssetBundleManager.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift#L92-L181))
-- ETag header validation against manifest hashes (like [`verifyResponse` method](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L325-L340))
-- Resumable downloads with partial completion tracking via `PartialDownload` directory (like [`moveExistingDownloadDirectoryIfNeeded`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift#L186-L205))
-- Background task support for 3-minute continuation when app backgrounded (like [`AssetBundleDownloader` init](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L90-L103))
-- Retry logic with exponential backoff and network reachability monitoring (using [`METRetryStrategy`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L49-L54) and [`METNetworkReachabilityManager`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L76-L79))
-- Hard link existing files when possible, download only missing assets (like [`cachedAssetForAsset`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift#L260-L275))
+- Parallel individual file downloads using URLSession (exactly like Cordova [`AssetBundleDownloader.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift))
+- Download asset manifest first, then missing individual files (like [`AssetBundleManager.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift#L92-L181))
+- ETag header validation against manifest hashes (like [`verifyResponse` method](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L325-L340))
+- Resumable downloads with partial completion tracking via `PartialDownload` directory (like [`moveExistingDownloadDirectoryIfNeeded`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift#L186-L205))
+- Background task support for 3-minute continuation when app backgrounded (like [`AssetBundleDownloader` init](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L90-L103))
+- Retry logic with exponential backoff and network reachability monitoring (using [`METRetryStrategy`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L49-L54) and [`METNetworkReachabilityManager`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift#L76-L79))
+- Hard link existing files when possible, download only missing assets (like [`cachedAssetForAsset`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleManager.swift#L260-L275))
 
 ### Phase 3: Bundle Switching & Serving
 
@@ -213,13 +213,13 @@ Library/NoCloud/meteor/v1.2.3/
   - Reload with safe bundle
 
 #### 4.2 Cold-Start Crash Detection
-- Track app lifecycle state in preferences (like [`startupTimer` in WebAppLocalServer.swift](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L208-L214))
+- Track app lifecycle state in preferences (like [`startupTimer` in WebAppLocalServer.swift](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L208-L214))
 - Detect abnormal termination (crash without proper app lifecycle)
-- Treat as launch failure and trigger recovery (like [`revertToLastKnownGoodVersion`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L320-L340))
+- Treat as launch failure and trigger recovery (like [`revertToLastKnownGoodVersion`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L320-L340))
 
 #### 4.3 Version Blacklisting
-- Maintain blacklist in state JSON (like [`blacklistedVersions` and `versionsToRetry`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift#L114-L172) in WebAppConfiguration.swift)
-- Check against blacklist before attempting to use any version (like [`shouldDownloadBundleForManifest`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L350-L369))
+- Maintain blacklist in state JSON (like [`blacklistedVersions` and `versionsToRetry`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift#L114-L172) in WebAppConfiguration.swift)
+- Check against blacklist before attempting to use any version (like [`shouldDownloadBundleForManifest`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppLocalServer.swift#L350-L369))
 - Never attempt to download or switch to blacklisted versions
 
 ### Phase 5: JavaScript API Compatibility
@@ -276,7 +276,7 @@ window.WebAppLocalServer = {
 - **iOS Only**: Android requires different approach (TBD in Phase 2)
 
 ### Download Strategy
-- **Decision**: Parallel individual file downloads with resumption (exactly like Cordova [`AssetBundleDownloader.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift))
+- **Decision**: Parallel individual file downloads with resumption (exactly like Cordova [`AssetBundleDownloader.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/AssetBundleDownloader.swift))
 - **Rationale**: Must match what Meteor server provides, proven robust approach with excellent performance. The Cordova implementation handles all edge cases.
 
 ### File Organization Strategy
@@ -284,7 +284,7 @@ window.WebAppLocalServer = {
 - **Rationale**: Works with standard web serving, no custom routing logic needed
 
 ### State Management
-- **Decision**: NSUserDefaults/Capacitor preferences (exactly like [`WebAppConfiguration.swift`](file:///Users/luke/Code/@strummachine/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift))
+- **Decision**: NSUserDefaults/Capacitor preferences (exactly like [`WebAppConfiguration.swift`](file:///Users/luke/Code/@banjerluke/capacitor-meteor-webapp/reference-plugin-cordova/src/ios/WebAppConfiguration.swift))
 - **Rationale**: Proven approach, handles all recovery scenarios including retry logic, leverages platform standards
 
 ### JavaScript Compatibility
