@@ -1,9 +1,9 @@
 Package.describe({
   name: 'banjerluke:capacitor-meteor-webapp-shim',
   version: '0.1.0',
-  summary: 'Adds compatibility for Meteor and Capacitor when using the @banjerluke/capacitor-meteor-webapp Capacitor plugin.',
-  git: '',
-  documentation: 'README.md'
+  summary: 'Shims WebAppLocalServer to use the @banjerluke/capacitor-meteor-webapp plugin.',
+  git: 'https://github.com/banjerluke/capacitor-meteor-webapp',
+  documentation: 'README.md',
 });
 
 Package.onUse(function (api) {
