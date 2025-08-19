@@ -77,24 +77,21 @@ public class CapacitorMeteorWebAppPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     
     @objc private func handleUpdateAvailable(_ notification: Notification) {
-        NSLog("🔔 CapacitorMeteorWebAppPlugin: Received updateAvailable notification")
         guard let userInfo = notification.userInfo,
               let version = userInfo["version"] as? String else { 
             NSLog("❌ CapacitorMeteorWebAppPlugin: No version in notification userInfo")
             return 
         }
         
-        NSLog("📱 CapacitorMeteorWebAppPlugin: Notifying JS listeners about version: \(version)")
+        NSLog("🔔 CapacitorMeteorWebAppPlugin: Notifying JS listeners about version: \(version)")
         notifyListeners("updateAvailable", data: ["version": version])
-        NSLog("✅ CapacitorMeteorWebAppPlugin: JS notification sent")
     }
     
     @objc private func handleUpdateFailed(_ notification: Notification) {
-        NSLog("🔔 CapacitorMeteorWebAppPlugin: Received updateFailed notification")
         guard let userInfo = notification.userInfo,
               let errorMessage = userInfo["error"] as? String else { return }
         
-        NSLog("📱 CapacitorMeteorWebAppPlugin: Notifying JS listeners about error: \(errorMessage)")
+        NSLog("🔔 CapacitorMeteorWebAppPlugin: Notifying JS listeners about error: \(errorMessage)")
         notifyListeners("error", data: ["message": errorMessage])
     }
 

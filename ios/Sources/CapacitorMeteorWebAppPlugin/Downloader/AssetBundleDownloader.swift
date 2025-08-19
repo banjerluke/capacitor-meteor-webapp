@@ -356,7 +356,6 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         if !response.isSuccessful {
             // Allow 404s for source map files since they may not be served in production
             if response.statusCode == 404 && (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
-                print("⚠️ 404 for source map file (expected): \(asset.urlPath)")
                 return // Don't throw error, just skip this file
             }
             
@@ -374,8 +373,6 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
             print("❌ Hash mismatch - Expected: \(expectedHash), Actual: \(actualHash)")
             throw WebAppError.downloadFailure(reason: "Hash mismatch for asset: \(asset)", underlyingError: nil)
         }
-        
-        print("✅ Response verification passed for: \(asset.urlPath)")
     }
 
     private func verifyRuntimeConfig(_ runtimeConfig: AssetBundle.RuntimeConfig) throws {

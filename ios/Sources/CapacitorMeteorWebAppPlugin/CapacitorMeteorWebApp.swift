@@ -581,24 +581,20 @@ public protocol CapacitorBridge: AnyObject {
     // MARK: - Event Notifications
 
     private func notifyUpdateAvailable(version: String) {
-        logger.info("📢 Posting NotificationCenter event for update available: \(version)")
         // Notify the Capacitor plugin bridge about update availability
         NotificationCenter.default.post(
             name: .meteorWebappUpdateAvailable,
             object: nil,
             userInfo: ["version": version]
         )
-        logger.info("✅ NotificationCenter event posted successfully")
     }
 
     private func notifyUpdateFailed(error: Error) {
-        logger.error("📢 Posting NotificationCenter event for update failed: \(error.localizedDescription)")
         // Notify the Capacitor plugin bridge about update failure
         NotificationCenter.default.post(
             name: .meteorWebappUpdateFailed,
             object: nil,
             userInfo: ["error": error.localizedDescription]
         )
-        logger.info("✅ NotificationCenter error event posted")
     }
 }
