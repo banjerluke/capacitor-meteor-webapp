@@ -1,3 +1,9 @@
+//
+// Errors.swift
+//
+// Defines error types and error handling utilities for the plugin.
+//
+
 import Foundation
 
 enum WebAppError: Error, CustomStringConvertible {
@@ -40,7 +46,7 @@ public enum HotCodePushError: Error, LocalizedError {
     case bundleOrganizationFailed(reason: String, underlyingError: Error?)
     case webViewUnavailable
     case downloadFailed(reason: String, underlyingError: Error?)
-    
+
     public var errorDescription: String? {
         switch self {
         case .noPendingVersion:
@@ -59,7 +65,7 @@ public enum HotCodePushError: Error, LocalizedError {
             return "Download failed: \(reason)"
         }
     }
-    
+
     public var underlyingError: Error? {
         switch self {
         case .bundleOrganizationFailed(_, let error), .downloadFailed(_, let error):

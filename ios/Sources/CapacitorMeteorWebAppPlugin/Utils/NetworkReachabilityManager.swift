@@ -1,3 +1,13 @@
+//
+// NetworkReachabilityManager.swift
+//
+// Monitors network reachability status using Apple's Network framework
+// and notifies delegates of connectivity changes.
+//
+// This file is ported from METNetworkReachabilityManager.m in cordova-plugin-meteor-webapp,
+// translated from Objective-C to Swift and updated to use Network framework for Capacitor.
+//
+
 import Foundation
 import Network
 
@@ -8,7 +18,9 @@ enum NetworkReachabilityStatus {
 }
 
 protocol NetworkReachabilityManagerDelegate: AnyObject {
-    func networkReachabilityManager(_ reachabilityManager: NetworkReachabilityManager, didDetectReachabilityStatusChange reachabilityStatus: NetworkReachabilityStatus)
+    func networkReachabilityManager(
+        _ reachabilityManager: NetworkReachabilityManager,
+        didDetectReachabilityStatusChange reachabilityStatus: NetworkReachabilityStatus)
 }
 
 @available(macOS 10.14, iOS 12.0, *)
@@ -36,7 +48,8 @@ final class NetworkReachabilityManager {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }
 
-            let newStatus: NetworkReachabilityStatus = path.status == .satisfied ? .reachable : .notReachable
+            let newStatus: NetworkReachabilityStatus =
+                path.status == .satisfied ? .reachable : .notReachable
 
             if newStatus != self.reachabilityStatus {
                 self.reachabilityStatus = newStatus

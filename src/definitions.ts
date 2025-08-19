@@ -1,7 +1,6 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 
 export interface CapacitorMeteorWebAppPlugin {
-
   /**
    * Signal that the app startup has completed
    */

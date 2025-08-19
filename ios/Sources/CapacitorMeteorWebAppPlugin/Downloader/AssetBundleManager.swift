@@ -1,9 +1,24 @@
+//
+// AssetBundleManager.swift
+//
+// Coordinates asset bundle management including checking for updates,
+// downloading new bundles, and managing the local bundle cache.
+//
+// This file is copied directly from cordova-plugin-meteor-webapp with
+// minimal changes to adapt for Capacitor.
+//
+
 import Foundation
 
 protocol AssetBundleManagerDelegate: AnyObject {
-    func assetBundleManager(_ assetBundleManager: AssetBundleManager, shouldDownloadBundleForManifest manifest: AssetManifest) -> Bool
-    func assetBundleManager(_ assetBundleManager: AssetBundleManager, didFinishDownloadingBundle assetBundle: AssetBundle)
-    func assetBundleManager(_ assetBundleManager: AssetBundleManager, didFailDownloadingBundleWithError error: Error)
+    func assetBundleManager(
+        _ assetBundleManager: AssetBundleManager,
+        shouldDownloadBundleForManifest manifest: AssetManifest
+    ) -> Bool
+    func assetBundleManager(
+        _ assetBundleManager: AssetBundleManager, didFinishDownloadingBundle assetBundle: AssetBundle)
+    func assetBundleManager(
+        _ assetBundleManager: AssetBundleManager, didFailDownloadingBundleWithError error: Error)
 }
 
 final class AssetBundleManager: AssetBundleDownloaderDelegate {
@@ -33,7 +48,9 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         return assetBundleDownloader != nil
     }
 
-    init(configuration: WebAppConfiguration, versionsDirectoryURL: URL, initialAssetBundle: AssetBundle) {
+    init(
+        configuration: WebAppConfiguration, versionsDirectoryURL: URL, initialAssetBundle: AssetBundle
+    ) {
         self.configuration = configuration
         self.versionsDirectoryURL = versionsDirectoryURL
         self.initialAssetBundle = initialAssetBundle
@@ -52,7 +69,8 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         // We use a separate session to download the manifest, so we can use caching
         // (which we disable for the session we use to download the other files
         // in AssetBundleDownloader)
-        session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: operationQueue)
+        session = URLSession(
+            configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: operationQueue)
     }
 
     deinit {
@@ -62,9 +80,10 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
     private func loadDownloadedAssetBundles() {
         let items: [URL]
         do {
-            items = try fileManager.contentsOfDirectory(at: versionsDirectoryURL,
-                                                        includingPropertiesForKeys: [URLResourceKey.isDirectoryKey],
-                                                        options: [.skipsHiddenFiles])
+            items = try fileManager.contentsOfDirectory(
+                at: versionsDirectoryURL,
+                includingPropertiesForKeys: [URLResourceKey.isDirectoryKey],
+                options: [.skipsHiddenFiles])
         } catch {
             NSLog("Could not load contents of versions directory: \(error)")
             return
@@ -101,85 +120,101 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
 
         NSLog("Start downloading asset manifest from: \(manifestURL)")
 
-        let dataTask = session.dataTask(with: manifestURL, completionHandler: {
-            (data, response, error) in
-            guard let data = data else {
-                self.didFailWithError(WebAppError.downloadFailure(reason: "Error downloading asset manifest", underlyingError: error))
-                return
-            }
-
-            guard let response = response as? HTTPURLResponse else { return }
-
-            if !response.isSuccessful {
-                self.didFailWithError(WebAppError.downloadFailure(reason: "Non-success status code \(response.statusCode) for asset manifest", underlyingError: nil))
-                return
-            }
-
-            let manifest: AssetManifest
-            do {
-                manifest = try AssetManifest(data: data)
-            } catch {
-                self.didFailWithError(error)
-                return
-            }
-
-            let version = manifest.version
-
-            NSLog("Downloaded asset manifest for version: \(version)")
-
-            self.queue.async {
-                if self.assetBundleDownloader?.assetBundle.version == version {
-                    NSLog("Already downloading asset bundle version: \(version)")
+        let dataTask = session.dataTask(
+            with: manifestURL,
+            completionHandler: {
+                (data, response, error) in
+                guard let data = data else {
+                    self.didFailWithError(
+                        WebAppError.downloadFailure(
+                            reason: "Error downloading asset manifest", underlyingError: error))
                     return
                 }
 
-                // Give the delegate a chance to decide whether the version should be downloaded
-                if !(self.delegate?.assetBundleManager(self, shouldDownloadBundleForManifest: manifest) ?? false) {
+                guard let response = response as? HTTPURLResponse else { return }
+
+                if !response.isSuccessful {
+                    self.didFailWithError(
+                        WebAppError.downloadFailure(
+                            reason: "Non-success status code \(response.statusCode) for asset manifest",
+                            underlyingError: nil))
                     return
                 }
 
-                // Cancel in progress download if there is one
-                self.assetBundleDownloader?.cancel()
-                self.assetBundleDownloader = nil
-
-                // There is no need to redownload the initial version
-                if self.initialAssetBundle.version == version {
-                    self.didFinishDownloadingAssetBundle(self.initialAssetBundle)
-                    return
-                }
-
-                // If there is a previously downloaded asset bundle with the requested
-                // version, use that
-                if let assetBundle = self.downloadedAssetBundlesByVersion[version] {
-                    self.didFinishDownloadingAssetBundle(assetBundle)
-                    return
-                }
-
-                // Else, get ready to download the new asset bundle
-                self.moveExistingDownloadDirectoryIfNeeded()
-
-                // Create download directory
+                let manifest: AssetManifest
                 do {
-                    try self.fileManager.createDirectory(at: self.downloadDirectoryURL, withIntermediateDirectories: true, attributes: nil)
+                    manifest = try AssetManifest(data: data)
                 } catch {
-                    self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not create download directory", underlyingError: error))
-                    return
-                }
-
-                let manifestFileURL = self.downloadDirectoryURL.appendingPathComponent("program.json")
-                if !((try? data.write(to: manifestFileURL, options: [])) != nil) {
-          self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not write asset manifest to: \(manifestFileURL)", underlyingError: error))
-                    return
-                }
-
-                do {
-                    let assetBundle = try AssetBundle(directoryURL: self.downloadDirectoryURL, manifest: manifest, parentAssetBundle: self.initialAssetBundle)
-                    self.downloadAssetBundle(assetBundle, withBaseURL: baseURL)
-                } catch let error {
                     self.didFailWithError(error)
+                    return
                 }
-            }
-        })
+
+                let version = manifest.version
+
+                NSLog("Downloaded asset manifest for version: \(version)")
+
+                self.queue.async {
+                    if self.assetBundleDownloader?.assetBundle.version == version {
+                        NSLog("Already downloading asset bundle version: \(version)")
+                        return
+                    }
+
+                    // Give the delegate a chance to decide whether the version should be downloaded
+                    if !(self.delegate?.assetBundleManager(self, shouldDownloadBundleForManifest: manifest)
+                            ?? false) {
+                        return
+                    }
+
+                    // Cancel in progress download if there is one
+                    self.assetBundleDownloader?.cancel()
+                    self.assetBundleDownloader = nil
+
+                    // There is no need to redownload the initial version
+                    if self.initialAssetBundle.version == version {
+                        self.didFinishDownloadingAssetBundle(self.initialAssetBundle)
+                        return
+                    }
+
+                    // If there is a previously downloaded asset bundle with the requested
+                    // version, use that
+                    if let assetBundle = self.downloadedAssetBundlesByVersion[version] {
+                        self.didFinishDownloadingAssetBundle(assetBundle)
+                        return
+                    }
+
+                    // Else, get ready to download the new asset bundle
+                    self.moveExistingDownloadDirectoryIfNeeded()
+
+                    // Create download directory
+                    do {
+                        try self.fileManager.createDirectory(
+                            at: self.downloadDirectoryURL, withIntermediateDirectories: true, attributes: nil)
+                    } catch {
+                        self.didFailWithError(
+                            WebAppError.fileSystemFailure(
+                                reason: "Could not create download directory", underlyingError: error))
+                        return
+                    }
+
+                    let manifestFileURL = self.downloadDirectoryURL.appendingPathComponent("program.json")
+                    if !((try? data.write(to: manifestFileURL, options: [])) != nil) {
+                        self.didFailWithError(
+                            WebAppError.fileSystemFailure(
+                                reason: "Could not write asset manifest to: \(manifestFileURL)",
+                                underlyingError: error))
+                        return
+                    }
+
+                    do {
+                        let assetBundle = try AssetBundle(
+                            directoryURL: self.downloadDirectoryURL, manifest: manifest,
+                            parentAssetBundle: self.initialAssetBundle)
+                        self.downloadAssetBundle(assetBundle, withBaseURL: baseURL)
+                    } catch let error {
+                        self.didFailWithError(error)
+                    }
+                }
+            })
 
         // If a new version is available, we want to know as soon as possible even
         // if other downloads are in progress
@@ -192,19 +227,24 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
     /// don't unnecessarily redownload assets
     private func moveExistingDownloadDirectoryIfNeeded() {
         if fileManager.fileExists(atPath: downloadDirectoryURL.path) {
-            let partialDownloadDirectoryURL = self.versionsDirectoryURL.appendingPathComponent("PartialDownload")
+            let partialDownloadDirectoryURL = self.versionsDirectoryURL.appendingPathComponent(
+                "PartialDownload")
             do {
                 if fileManager.fileExists(atPath: partialDownloadDirectoryURL.path) {
                     try fileManager.removeItem(at: partialDownloadDirectoryURL)
                 }
                 try fileManager.moveItem(at: downloadDirectoryURL, to: partialDownloadDirectoryURL)
             } catch {
-                self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not move Downloading directory to PartialDownload", underlyingError: error))
+                self.didFailWithError(
+                    WebAppError.fileSystemFailure(
+                        reason: "Could not move Downloading directory to PartialDownload",
+                        underlyingError: error))
                 return
             }
 
             do {
-                partiallyDownloadedAssetBundle = try AssetBundle(directoryURL: partialDownloadDirectoryURL, parentAssetBundle: initialAssetBundle)
+                partiallyDownloadedAssetBundle = try AssetBundle(
+                    directoryURL: partialDownloadDirectoryURL, parentAssetBundle: initialAssetBundle)
             } catch {
                 NSLog("Could not load partially downloaded asset bundle: \(error)")
             }
@@ -221,9 +261,12 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
             // Create containing directories for the asset if necessary
             let containingDirectoryURL = asset.fileURL.deletingLastPathComponent()
             do {
-                try fileManager.createDirectory(at: containingDirectoryURL, withIntermediateDirectories: true, attributes: nil)
+                try fileManager.createDirectory(
+                    at: containingDirectoryURL, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not create containing directories for asset", underlyingError: error))
+                self.didFailWithError(
+                    WebAppError.fileSystemFailure(
+                        reason: "Could not create containing directories for asset", underlyingError: error))
                 return
             }
 
@@ -236,7 +279,9 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
                     if asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map" {
                         // Skip this asset and continue processing
                     } else {
-                        self.didFailWithError(WebAppError.fileSystemFailure(reason: "Could not link to cached asset \(asset.urlPath)", underlyingError: error))
+                        self.didFailWithError(
+                            WebAppError.fileSystemFailure(
+                                reason: "Could not link to cached asset \(asset.urlPath)", underlyingError: error))
                         return
                     }
                 }
@@ -256,7 +301,9 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
             return
         }
 
-        assetBundleDownloader = AssetBundleDownloader(configuration: configuration, assetBundle: assetBundle, baseURL: baseURL, missingAssets: missingAssets)
+        assetBundleDownloader = AssetBundleDownloader(
+            configuration: configuration, assetBundle: assetBundle, baseURL: baseURL,
+            missingAssets: missingAssets)
         assetBundleDownloader!.delegate = self
         assetBundleDownloader!.resume()
     }
@@ -276,7 +323,8 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
             }
         }
 
-        if let cachedAsset = partiallyDownloadedAssetBundle?.cachedAssetForURLPath(asset.urlPath, hash: asset.hash) {
+        if let cachedAsset = partiallyDownloadedAssetBundle?.cachedAssetForURLPath(
+            asset.urlPath, hash: asset.hash) {
             // Make sure the asset has been downloaded
             if fileManager.fileExists(atPath: cachedAsset.fileURL.path) {
                 return cachedAsset
@@ -301,7 +349,8 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
 
             downloadedAssetBundlesByVersion[assetBundle.version] = assetBundle
         } catch {
-            throw WebAppError.fileSystemFailure(reason: "Could not move downloaded asset bundle into place", underlyingError: error)
+            throw WebAppError.fileSystemFailure(
+                reason: "Could not move downloaded asset bundle into place", underlyingError: error)
         }
     }
 
@@ -333,7 +382,9 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         }
     }
 
-    func assetBundleDownloader(_ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error) {
+    func assetBundleDownloader(
+        _ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error
+    ) {
         self.assetBundleDownloader = nil
 
         queue.async {

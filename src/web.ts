@@ -3,7 +3,6 @@ import { WebPlugin } from '@capacitor/core';
 import type { CapacitorMeteorWebAppPlugin } from './definitions';
 
 export class CapacitorMeteorWebAppWeb extends WebPlugin implements CapacitorMeteorWebAppPlugin {
-
   async startupDidComplete(): Promise<void> {
     console.warn('CapacitorMeteorWebApp.startupDidComplete() is not available on web platform');
   }

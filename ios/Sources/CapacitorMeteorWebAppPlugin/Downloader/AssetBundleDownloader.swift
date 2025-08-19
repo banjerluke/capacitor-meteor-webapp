@@ -1,9 +1,21 @@
+//
+// AssetBundleDownloader.swift
+//
+// Handles downloading of Meteor app asset bundles over HTTP with
+// support for retry logic, error handling, and progress tracking.
+//
+// This file is copied directly from cordova-plugin-meteor-webapp with
+// minimal changes to adapt for Capacitor.
+//
+
 protocol AssetBundleDownloaderDelegate: AnyObject {
-  func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
-  func assetBundleDownloader(_ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error)
+    func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
+    func assetBundleDownloader(
+        _ assetBundleDownloader: AssetBundleDownloader, didFailWithError error: Error)
 }
 
-final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate, URLSessionDownloadDelegate, NetworkReachabilityManagerDelegate {
+final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskDelegate,
+                                   URLSessionDataDelegate, URLSessionDownloadDelegate, NetworkReachabilityManagerDelegate {
     private(set) var configuration: WebAppConfiguration
     private(set) var assetBundle: AssetBundle
     private(set) var baseURL: URL
@@ -34,13 +46,16 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         case invalid
     }
 
-  private var status: Status = .suspended
+    private var status: Status = .suspended
 
-  private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
+    private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
 
-  init(configuration: WebAppConfiguration, assetBundle: AssetBundle, baseURL: URL, missingAssets: Set<Asset>) {
-    self.configuration = configuration
-    self.assetBundle = assetBundle
+    init(
+        configuration: WebAppConfiguration, assetBundle: AssetBundle, baseURL: URL,
+        missingAssets: Set<Asset>
+    ) {
+        self.configuration = configuration
+        self.assetBundle = assetBundle
         self.baseURL = baseURL
         self.missingAssets = missingAssets
 
@@ -67,7 +82,8 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         operationQueue.maxConcurrentOperationCount = 1
         operationQueue.underlyingQueue = queue
 
-        session = Foundation.URLSession(configuration: sessionConfiguration, delegate: self, delegateQueue: operationQueue)
+        session = Foundation.URLSession(
+            configuration: sessionConfiguration, delegate: self, delegateQueue: operationQueue)
 
         resumeTimer = Timer(queue: queue) { [weak self] in
             self?.resume()
@@ -80,7 +96,9 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
             _ = networkReachabilityManager?.startMonitoring()
         }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(AssetBundleDownloader.applicationWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(AssetBundleDownloader.applicationWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification, object: nil)
     }
 
     deinit {
@@ -183,7 +201,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     }
 
     private func _cancel() {
-    if self.status != .canceling || self.status == .invalid {
+        if self.status != .canceling || self.status == .invalid {
             self.status = .canceling
             self.session.invalidateAndCancel()
             self.endBackgroundTask()
@@ -222,7 +240,10 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     // MARK: NetworkReachabilityManagerDelegate
 
     @available(macOS 10.14, iOS 12.0, *)
-    func networkReachabilityManager(_ reachabilityManager: NetworkReachabilityManager, didDetectReachabilityStatusChange reachabilityStatus: NetworkReachabilityStatus) {
+    func networkReachabilityManager(
+        _ reachabilityManager: NetworkReachabilityManager,
+        didDetectReachabilityStatusChange reachabilityStatus: NetworkReachabilityStatus
+    ) {
 
         if reachabilityStatus == .reachable && status == .waiting {
             resume()
@@ -247,7 +268,8 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                     NSLog("Download of asset: \(asset) did fail with error: \(error)")
 
                     // If there is resume data, we store it and use it to recreate the task later
-                    if let resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data {
+                    if let resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData]
+                        as? Data {
                         resumeDataByAsset[asset] = resumeData
                     }
                     resumeLater()
@@ -258,25 +280,28 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     // MARK: URLSessionDataDelegate
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        if status == .canceling { 
+    func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        if status == .canceling {
             completionHandler(.cancel)
-            return 
+            return
         }
 
-        guard let response = response as? HTTPURLResponse else { 
+        guard let response = response as? HTTPURLResponse else {
             completionHandler(.cancel)
-            return 
+            return
         }
 
         if let asset = assetsDownloadingByTaskIdentifier[dataTask.taskIdentifier] {
             do {
                 try verifyResponse(response, forAsset: asset)
-                
+
                 // Check if this was a 404 for a source map that we're ignoring
                 if let httpResponse = response as? HTTPURLResponse,
-                   httpResponse.statusCode == 404 && 
-                   (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
+                   httpResponse.statusCode == 404
+                    && (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
                     // Mark this asset as complete and don't download
                     assetsDownloadingByTaskIdentifier.removeValue(forKey: dataTask.taskIdentifier)
                     missingAssets.remove(asset)
@@ -297,7 +322,10 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         }
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didBecome downloadTask: URLSessionDownloadTask) {
+    func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask,
+        didBecome downloadTask: URLSessionDownloadTask
+    ) {
         if let asset = assetsDownloadingByTaskIdentifier.removeValue(forKey: dataTask.taskIdentifier) {
             assetsDownloadingByTaskIdentifier[downloadTask.taskIdentifier] = asset
         }
@@ -305,7 +333,10 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     // MARK: URLSessionDownloadDelegate
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
+    func urlSession(
+        _ session: URLSession, downloadTask: URLSessionDownloadTask,
+        didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64
+    ) {
         if status == .canceling { return }
 
         guard let response = downloadTask.response as? HTTPURLResponse else { return }
@@ -319,8 +350,12 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         }
     }
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        if let asset = assetsDownloadingByTaskIdentifier.removeValue(forKey: downloadTask.taskIdentifier) {
+    func urlSession(
+        _ session: URLSession, downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        if let asset = assetsDownloadingByTaskIdentifier.removeValue(
+            forKey: downloadTask.taskIdentifier) {
             if status == .canceling { return }
 
             // We don't have a hash for the index page, so we have to parse the runtime config
@@ -355,23 +390,26 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         // A response with a non-success status code should not be considered a succesful download
         if !response.isSuccessful {
             // Allow 404s for source map files since they may not be served in production
-            if response.statusCode == 404 && (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
-                return // Don't throw error, just skip this file
+            if response.statusCode == 404
+                && (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
+                return  // Don't throw error, just skip this file
             }
-            
+
             print("❌ Non-success status code: \(response.statusCode)")
-            throw WebAppError.downloadFailure(reason: "Non-success status code \(response.statusCode) for asset: \(asset)", underlyingError: nil)
+            throw WebAppError.downloadFailure(
+                reason: "Non-success status code \(response.statusCode) for asset: \(asset)",
+                underlyingError: nil)
             // If we have a hash for the asset, and the ETag header also specifies
             // a hash, we compare these to verify if we received the expected asset version
-        } else if
-            let expectedHash = asset.hash,
-            // TODO: allHeaderFields should be case insensitive, but now requires 'Etag'
-            // This appears to be s Swift bug (see https://bugs.swift.org/browse/SR-2429)
-            let ETag = response.allHeaderFields["Etag"] as? String,
-            let actualHash = SHA1HashFromETag(ETag),
-            actualHash != expectedHash {
+        } else if let expectedHash = asset.hash,
+                  // TODO: allHeaderFields should be case insensitive, but now requires 'Etag'
+                  // This appears to be s Swift bug (see https://bugs.swift.org/browse/SR-2429)
+                  let ETag = response.allHeaderFields["Etag"] as? String,
+                  let actualHash = SHA1HashFromETag(ETag),
+                  actualHash != expectedHash {
             print("❌ Hash mismatch - Expected: \(expectedHash), Actual: \(actualHash)")
-            throw WebAppError.downloadFailure(reason: "Hash mismatch for asset: \(asset)", underlyingError: nil)
+            throw WebAppError.downloadFailure(
+                reason: "Hash mismatch for asset: \(asset)", underlyingError: nil)
         }
     }
 
@@ -379,23 +417,34 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         let expectedVersion = assetBundle.version
         if let actualVersion = runtimeConfig.autoupdateVersionCordova,
            expectedVersion != actualVersion {
-            throw WebAppError.downloadFailure(reason: "Version mismatch for index page, expected: \(expectedVersion), actual: \(actualVersion)", underlyingError: nil)
+            throw WebAppError.downloadFailure(
+                reason:
+                    "Version mismatch for index page, expected: \(expectedVersion), actual: \(actualVersion)",
+                underlyingError: nil)
         }
 
         guard let rootURL = runtimeConfig.rootURL else {
-            throw WebAppError.unsuitableAssetBundle(reason: "Could not find ROOT_URL in downloaded asset bundle", underlyingError: nil)
+            throw WebAppError.unsuitableAssetBundle(
+                reason: "Could not find ROOT_URL in downloaded asset bundle", underlyingError: nil)
         }
 
         if configuration.rootURL?.host != "localhost" && rootURL.host == "localhost" {
-            throw WebAppError.unsuitableAssetBundle(reason: "ROOT_URL in downloaded asset bundle would change current ROOT_URL to localhost. Make sure ROOT_URL has been configured correctly on the server.", underlyingError: nil)
+            throw WebAppError.unsuitableAssetBundle(
+                reason:
+                    "ROOT_URL in downloaded asset bundle would change current ROOT_URL to localhost. Make sure ROOT_URL has been configured correctly on the server.",
+                underlyingError: nil)
         }
 
         guard let appId = runtimeConfig.appId else {
-            throw WebAppError.unsuitableAssetBundle(reason: "Could not find appId in downloaded asset bundle", underlyingError: nil)
+            throw WebAppError.unsuitableAssetBundle(
+                reason: "Could not find appId in downloaded asset bundle", underlyingError: nil)
         }
 
         if appId != configuration.appId {
-            throw WebAppError.unsuitableAssetBundle(reason: "appId in downloaded asset bundle does not match current appId. Make sure the server at \(rootURL) is serving the right app.", underlyingError: nil)
+            throw WebAppError.unsuitableAssetBundle(
+                reason:
+                    "appId in downloaded asset bundle does not match current appId. Make sure the server at \(rootURL) is serving the right app.",
+                underlyingError: nil)
         }
     }
 }

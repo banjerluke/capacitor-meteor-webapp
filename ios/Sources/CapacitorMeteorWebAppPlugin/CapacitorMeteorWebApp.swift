@@ -1,3 +1,14 @@
+//
+// CapacitorMeteorWebApp.swift
+//
+// Core implementation of the Meteor webapp functionality for Capacitor,
+// managing asset bundles, updates, and the web view integration.
+//
+// This is largely adapted from WebAppLocalServer.swift from the old
+// cordova-plugin-meteor-webapp project. We don't embed our own web server
+// any more, however; instead, we use Capacitor's built-in server.
+//
+
 import Foundation
 import WebKit
 import os.log
@@ -106,7 +117,7 @@ public protocol CapacitorBridge: AnyObject {
         // Setup startup timer
         setupStartupTimer()
     }
-    
+
     private func selectCurrentAssetBundle(initialAssetBundle: AssetBundle) {
         // If a last downloaded version has been set and the asset bundle exists,
         // we set it as the current asset bundle
@@ -121,7 +132,9 @@ public protocol CapacitorBridge: AnyObject {
             }
         } else {
             if let lastDownloadedVersion = configuration.lastDownloadedVersion {
-                logger.warning("⚠️ Downloaded version \(lastDownloadedVersion) was configured but bundle not found, falling back to initial bundle")
+                logger.warning(
+                    "⚠️ Downloaded version \(lastDownloadedVersion) was configured but bundle not found, falling back to initial bundle"
+                )
             }
             logger.info("📦 Using initial asset bundle version: \(initialAssetBundle.version)")
             currentAssetBundle = initialAssetBundle

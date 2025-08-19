@@ -1,3 +1,10 @@
+//
+// BundleOrganizer.swift
+//
+// Handles file organization logic for bundles, including URL path mapping
+// and directory structure creation for Meteor webapp assets.
+//
+
 import Foundation
 
 /// Handles file organization logic for bundles, including URL path mapping and directory structure creation
@@ -12,7 +19,8 @@ public class BundleOrganizer {
         let fileManager = FileManager.default
 
         // Create target directory if it doesn't exist
-        try fileManager.createDirectory(at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
+        try fileManager.createDirectory(
+            at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
 
         // Organize own assets
         for asset in bundle.ownAssets {
@@ -38,13 +46,16 @@ public class BundleOrganizer {
     ///   - targetDirectory: The target directory
     ///   - fileManager: File manager instance
     /// - Throws: WebAppError if organization fails
-    private static func organizeAsset(_ asset: Asset, in targetDirectory: URL, fileManager: FileManager) throws {
+    private static func organizeAsset(
+        _ asset: Asset, in targetDirectory: URL, fileManager: FileManager
+    ) throws {
         let sourceURL = asset.fileURL
         let targetURL = targetURLForAsset(asset, in: targetDirectory)
 
         // Ensure the target directory structure exists
         let targetDirectoryURL = targetURL.deletingLastPathComponent()
-        try fileManager.createDirectory(at: targetDirectoryURL, withIntermediateDirectories: true, attributes: nil)
+        try fileManager.createDirectory(
+            at: targetDirectoryURL, withIntermediateDirectories: true, attributes: nil)
 
         // Check if source file exists
         guard fileManager.fileExists(atPath: sourceURL.path) else {
@@ -52,8 +63,10 @@ public class BundleOrganizer {
                 // Skip missing source maps - they may not be served in production
                 return
             }
-            print("❌ Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
-            throw WebAppError.fileSystemError(reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
+            print(
+                "❌ Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
+            throw WebAppError.fileSystemError(
+                reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
         }
 
         // If target already exists, remove it first
@@ -69,7 +82,8 @@ public class BundleOrganizer {
             do {
                 try fileManager.copyItem(at: sourceURL, to: targetURL)
             } catch {
-                throw WebAppError.fileSystemError(reason: "Failed to organize asset \(asset.urlPath)", underlyingError: error)
+                throw WebAppError.fileSystemError(
+                    reason: "Failed to organize asset \(asset.urlPath)", underlyingError: error)
             }
         }
     }
@@ -103,19 +117,22 @@ public class BundleOrganizer {
         let fileManager = FileManager.default
 
         // Create the target directory itself
-        try fileManager.createDirectory(at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
+        try fileManager.createDirectory(
+            at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
 
         // Get all unique directory paths from assets
-        let directoryPaths = Set(bundle.ownAssets.compactMap { asset -> String? in
-            let targetURL = targetURLForAsset(asset, in: targetDirectory)
-            let directoryURL = targetURL.deletingLastPathComponent()
-            return directoryURL.path
-        })
+        let directoryPaths = Set(
+            bundle.ownAssets.compactMap { asset -> String? in
+                let targetURL = targetURLForAsset(asset, in: targetDirectory)
+                let directoryURL = targetURL.deletingLastPathComponent()
+                return directoryURL.path
+            })
 
         // Create all required directories
         for directoryPath in directoryPaths {
             let directoryURL = URL(fileURLWithPath: directoryPath)
-            try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
+            try fileManager.createDirectory(
+                at: directoryURL, withIntermediateDirectories: true, attributes: nil)
         }
     }
 
@@ -150,13 +167,14 @@ public class BundleOrganizer {
         let fileManager = FileManager.default
 
         guard fileManager.fileExists(atPath: targetDirectory.path) else {
-            return // Nothing to clean up
+            return  // Nothing to clean up
         }
 
         do {
             try fileManager.removeItem(at: targetDirectory)
         } catch {
-            throw WebAppError.fileSystemError(reason: "Failed to cleanup bundle directory", underlyingError: error)
+            throw WebAppError.fileSystemError(
+                reason: "Failed to cleanup bundle directory", underlyingError: error)
         }
     }
 }

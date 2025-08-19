@@ -1,4 +1,11 @@
+//
+// CapacitorMeteorWebAppPluginTests.swift
+//
+// Unit tests for the Capacitor Meteor webapp plugin.
+//
+
 import XCTest
+
 @testable import CapacitorMeteorWebAppPlugin
 
 class CapacitorMeteorWebAppTests: XCTestCase {
