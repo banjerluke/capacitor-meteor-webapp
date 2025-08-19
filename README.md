@@ -4,6 +4,8 @@ A Capacitor plugin that brings hot code push functionality to Meteor apps, allow
 
 Works with existing Meteor Cordova apps after also installing the `banjerluke:capacitor-meteor-webapp-shim` Meteor package to shim `WebAppLocalServer` on `window`.
 
+# WARNING 🚨 This is a brand new, work-in-progress plugin! Don't use it for anything without extensively testing it. I will remove this notice when I've had a chance to test it more thoroughly.
+
 ## Features
 
 This plugin inherits the nifty functionality of [Meteor's `cordova-plugin-meteor-webapp`](https://github.com/meteor/cordova-plugin-meteor-webapp):
