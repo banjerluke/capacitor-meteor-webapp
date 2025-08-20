@@ -52,12 +52,7 @@ public class CapacitorMeteorWebAppPlugin: CAPPlugin, CAPBridgedPlugin {
     private var bridgeAdapter: CapacitorBridgeAdapter!
 
     override public func load() {
-        NSLog(
-            "🔧 CapacitorMeteorWebAppPlugin: Loading plugin, bridge: \(String(describing: self.bridge))"
-        )
-
         bridgeAdapter = CapacitorBridgeAdapter(bridge: self.bridge)
-        NSLog("🔧 CapacitorMeteorWebAppPlugin: Created bridge adapter: \(bridgeAdapter!)")
         implementation = CapacitorMeteorWebApp(capacitorBridge: bridgeAdapter)
 
         // Listen for update notifications from the implementation

@@ -124,7 +124,7 @@ public protocol CapacitorBridge: AnyObject {
         if let lastDownloadedVersion = configuration.lastDownloadedVersion,
            let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
             lastDownloadedVersion) {
-            logger.info("✅ Using downloaded asset bundle version: \(lastDownloadedVersion)")
+            logger.info("📦 Using downloaded asset bundle version: \(lastDownloadedVersion)")
             currentAssetBundle = downloadedAssetBundle
             if configuration.lastKnownGoodVersion != lastDownloadedVersion {
                 startStartupTimer()
@@ -234,7 +234,6 @@ public protocol CapacitorBridge: AnyObject {
         configuration.appId = currentBundle.appId
         configuration.rootURL = currentBundle.rootURL
         configuration.cordovaCompatibilityVersion = currentBundle.cordovaCompatibilityVersion
-        logger.info("Serving asset bundle version: \(currentBundle.version)")
     }
 
     private func setupCurrentBundle() {

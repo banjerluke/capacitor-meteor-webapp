@@ -101,8 +101,6 @@ public class BundleOrganizer {
     ///   - targetURL: Target location for the modified index.html
     /// - Throws: WebAppError if processing fails
     private static func organizeIndexHtml(sourceURL: URL, targetURL: URL) throws {
-        print("🔧 BundleOrganizer: Injecting WebAppLocalServer shim into index.html")
-
         // Read the original HTML content
         let originalContent: String
         do {
