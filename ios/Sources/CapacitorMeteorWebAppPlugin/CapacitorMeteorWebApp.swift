@@ -322,7 +322,7 @@ public protocol CapacitorBridge: AnyObject {
      * Notify the plugin that app startup is complete
      */
     public func startupDidComplete(completion: @escaping (Error?) -> Void) {
-        logger.info("App startup confirmed")
+        logger.info("App startup completed for bundle \(currentAssetBundle.version)")
         startupTimer?.stop()
 
         // If startup completed successfully, we consider a version good
