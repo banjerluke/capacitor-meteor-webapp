@@ -181,4 +181,59 @@ class TestFixtures {
     private func loadFileData(path: String) -> Data? {
         return FileManager.default.contents(atPath: path)
     }
+
+    // MARK: - Version Update Testing Support
+
+    func createManifestJSON(version: String, changedFiles: [String] = []) -> Data? {
+        let manifest: [String: Any] = [
+            "format": "web-program-pre1",
+            "version": version,
+            "cordovaCompatibilityVersions": [
+                "ios": "1.0.0"
+            ],
+            "manifest": createManifestEntries(version: version, changedFiles: changedFiles)
+        ]
+
+        do {
+            return try JSONSerialization.data(withJSONObject: manifest, options: .prettyPrinted)
+        } catch {
+            print("Error creating manifest JSON: \(error)")
+            return nil
+        }
+    }
+
+    private func createManifestEntries(version: String, changedFiles: [String]) -> [[String: Any]] {
+        var entries: [[String: Any]] = [
+            [
+                "path": "index.html",
+                "url": "/",
+                "type": "html",
+                "hash": "index-hash-\(version)",
+                "cacheable": false,
+                "where": "client"
+            ],
+            [
+                "path": "app/some-file",
+                "url": "/some-file",
+                "type": "js",
+                "hash": "some-file-hash-\(version)",
+                "cacheable": true,
+                "where": "client"
+            ]
+        ]
+
+        // Add changed files to manifest
+        for changedFile in changedFiles {
+            entries.append([
+                "path": "app/\(changedFile)",
+                "url": "/\(changedFile)",
+                "type": "js",
+                "hash": "\(changedFile)-hash-\(version)",
+                "cacheable": true,
+                "where": "client"
+            ])
+        }
+
+        return entries
+    }
 }

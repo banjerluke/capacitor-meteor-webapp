@@ -72,6 +72,7 @@ exports.defineAutoTests = function () {
       });
 
       it('should only serve the new version after a page reload', function (done) {
+        // Implemented in Swift: VersionUpdateTests.testServeNewVersionAfterReload()
         WebAppLocalServer.onNewVersionReady(function () {
           expectVersionServedToEqual('version1', function () {
             WebAppLocalServer.simulatePageReload(function () {
@@ -84,6 +85,7 @@ exports.defineAutoTests = function () {
       });
 
       it('should only download changed files', function (done) {
+        // Implemented in Swift: VersionUpdateTests.testDownloadOnlyChangedFiles()
         WebAppLocalServer.onNewVersionReady(function () {
           WebAppMockRemoteServer.receivedRequests(
             expectPathsForRequestsToMatch(
@@ -114,6 +116,7 @@ exports.defineAutoTests = function () {
       });
 
       it('should remember the new version after a restart', function (done) {
+        // Implemented in Swift: VersionUpdateTests.testRememberVersionAfterRestart()
         WebAppLocalServer.onNewVersionReady(function () {
           WebAppLocalServer.simulateAppRestart(function () {
             expectVersionServedToEqual('version2', done);

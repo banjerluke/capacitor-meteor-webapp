@@ -3,6 +3,7 @@ import Foundation
 class MockMeteorServerProtocol: URLProtocol {
     static var mockResponses: [String: MockResponse] = [:]
     static var receivedRequests: [URLRequest] = []
+    static var versionHandlers: [String: (String) -> Data?] = [:]
 
     struct MockResponse {
         let data: Data?
@@ -71,6 +72,7 @@ class MockMeteorServerProtocol: URLProtocol {
     static func reset() {
         mockResponses.removeAll()
         receivedRequests.removeAll()
+        versionHandlers.removeAll()
     }
 
     static func setMockResponse(for urlString: String, response: MockResponse) {
@@ -192,6 +194,19 @@ class MockMeteorServerProtocol: URLProtocol {
 
         default:
             break
+        }
+    }
+
+    // MARK: - Version Update Testing Support
+
+    static func setResponseForVersion(_ version: String, handler: @escaping (String) -> Data?) {
+        versionHandlers[version] = handler
+    }
+
+    static var requestedPaths: [String] {
+        return receivedRequests.compactMap { request in
+            guard let url = request.url else { return nil }
+            return url.lastPathComponent
         }
     }
 }
