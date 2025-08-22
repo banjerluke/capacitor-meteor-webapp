@@ -5,7 +5,9 @@
 // to Capacitor, providing hot code push capabilities for iOS.
 //
 
+#if !TESTING
 import Capacitor
+#endif
 import Foundation
 import WebKit
 

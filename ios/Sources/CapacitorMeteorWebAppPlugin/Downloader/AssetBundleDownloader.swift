@@ -8,6 +8,12 @@
 // minimal changes to adapt for Capacitor.
 //
 
+import Foundation
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
 protocol AssetBundleDownloaderDelegate: AnyObject {
     func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
     func assetBundleDownloader(
@@ -299,8 +305,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                 try verifyResponse(response, forAsset: asset)
 
                 // Check if this was a 404 for a source map that we're ignoring
-                if let httpResponse = response as? HTTPURLResponse,
-                   httpResponse.statusCode == 404
+                if response.statusCode == 404
                     && (asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map") {
                     // Mark this asset as complete and don't download
                     assetsDownloadingByTaskIdentifier.removeValue(forKey: dataTask.taskIdentifier)

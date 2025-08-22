@@ -110,8 +110,24 @@ public class BundleOrganizer {
                 reason: "Failed to read index.html content", underlyingError: error)
         }
 
+        // Inject the shim using the public method
+        let modifiedContent = try injectWebAppLocalServerShim(into: originalContent)
+
+        do {
+            try modifiedContent.write(to: targetURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WebAppError.fileSystemError(
+                reason: "Failed to write modified index.html", underlyingError: error)
+        }
+    }
+
+    /// Injects WebAppLocalServer shim into HTML content string
+    /// to provide the same API in the JS context as cordova-plugin-meteor-webapp
+    /// - Parameter htmlContent: The original HTML content
+    /// - Returns: Modified HTML content with shim injected
+    /// - Throws: WebAppError if injection fails
+    static func injectWebAppLocalServerShim(into htmlContent: String) throws -> String {
         // WebAppLocalServer compatibility shim for Capacitor
-        // Provides the same API as cordova-plugin-meteor-webapp
         let shimScript = """
             <script>
             (function() {
@@ -174,20 +190,15 @@ public class BundleOrganizer {
         """
 
         // Inject the shim before closing </head> tag, or before </body> if no head
-        let modifiedContent: String
-        if let headCloseRange = originalContent.range(of: "</head>", options: .caseInsensitive) {
-            modifiedContent = originalContent.replacingCharacters(in: headCloseRange, with: shimScript + "\n</head>")
-        } else if let bodyCloseRange = originalContent.range(of: "</body>", options: .caseInsensitive) {
-            modifiedContent = originalContent.replacingCharacters(in: bodyCloseRange, with: shimScript + "\n</body>")
+        if let headCloseRange = htmlContent.range(of: "</head>", options: .caseInsensitive) {
+            return htmlContent.replacingCharacters(
+                in: headCloseRange, with: shimScript + "\n</head>")
+        } else if let bodyCloseRange = htmlContent.range(of: "</body>", options: .caseInsensitive) {
+            return htmlContent.replacingCharacters(
+                in: bodyCloseRange, with: shimScript + "\n</body>")
         } else {
             // Just append to the end if we can't find head or body tags
-            modifiedContent = originalContent + shimScript
-        }
-
-        do {
-            try modifiedContent.write(to: targetURL, atomically: true, encoding: .utf8)
-        } catch {
-            throw WebAppError.fileSystemError(reason: "Failed to write modified index.html", underlyingError: error)
+            return htmlContent + shimScript
         }
     }
 

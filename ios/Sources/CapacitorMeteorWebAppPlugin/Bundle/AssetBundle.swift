@@ -8,6 +8,8 @@
 // minimal changes to adapt for Capacitor.
 //
 
+import Foundation
+
 /// Regex used to extract __meteor_runtime_config__ from index.html
 private let configJSONRegEx = try! NSRegularExpression(
     pattern: "__meteor_runtime_config__ = JSON.parse\\(decodeURIComponent\\(\"([^\"]*)\"\\)\\)",
@@ -150,7 +152,7 @@ final class AssetBundle {
         guard let indexFile = self.indexFile else { return nil }
 
         do {
-            return try loadRuntimeConfigFromIndexFileAtURL(indexFile.fileURL as URL)
+            return try loadRuntimeConfigFromIndexFileAtURL(indexFile.fileURL)
         } catch {
             NSLog("\(error)")
             return nil

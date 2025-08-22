@@ -8,6 +8,8 @@
 // minimal changes to adapt for Capacitor.
 //
 
+import Foundation
+
 struct Asset {
     let bundle: AssetBundle
     let filePath: String

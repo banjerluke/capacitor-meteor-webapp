@@ -13,6 +13,10 @@ import Foundation
 import WebKit
 import os.log
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 // MARK: - Notification Names
 extension Notification.Name {
     static let meteorWebappUpdateAvailable = Notification.Name("MeteorWebappUpdateAvailable")

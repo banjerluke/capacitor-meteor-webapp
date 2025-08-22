@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "CapacitorMeteorWebApp",
-    platforms: [.iOS(.v14)],
+    platforms: [.iOS(.v14), .macOS(.v11)],
     products: [
         .library(
             name: "CapacitorMeteorWebApp",
@@ -19,10 +19,14 @@ let package = Package(
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Cordova", package: "capacitor-swift-pm")
             ],
-            path: "ios/Sources/CapacitorMeteorWebAppPlugin"),
+            path: "ios/Sources/CapacitorMeteorWebAppPlugin",
+            exclude: ["CapacitorMeteorWebAppPlugin.swift"],
+            swiftSettings: [.define("TESTING")]),
         .testTarget(
-            name: "CapacitorMeteorWebAppPluginTests",
+            name: "CapacitorMeteorWebAppTests",
             dependencies: ["CapacitorMeteorWebAppPlugin"],
-            path: "ios/Tests/CapacitorMeteorWebAppPluginTests")
+            path: "ios/Tests/CapacitorMeteorWebAppTests",
+            resources: [.copy("../../../tests/fixtures")],
+            swiftSettings: [.define("TESTING")])
     ]
 )

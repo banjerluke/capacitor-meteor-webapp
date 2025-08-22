@@ -8,6 +8,8 @@
 // minimal changes to adapt for Capacitor.
 //
 
+import Foundation
+
 final class WebAppConfiguration {
     let userDefaults = UserDefaults.standard
 
