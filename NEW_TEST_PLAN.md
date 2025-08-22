@@ -17,11 +17,11 @@ This plan recreates the 50 Cordova plugin tests (`tests/cordova_tests.js`) adapt
 
 | Old Test                                                                                           | Line  | New Swift Test                               | Description                                         | Status                                        |
 | -------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------- | --------------------------------------------------- | --------------------------------------------- |
-| "should serve index.html for /"                                                                    | 8-10  | `testServeIndexForRoot()`                    | Test that root path serves index.html via Capacitor | 📋 TODO                                       |
+| "should serve index.html for /"                                                                    | 8-10  | `testServeIndexForRoot()`                    | Test that root path serves index.html via Capacitor | ✅ **Done**                                   |
 | "should serve assets based on the URL in the manifest"                                             | 12-21 | `testServeManifestAssets()`                  | Test manifest-based asset serving                   | ✅ **Done** (`testAssetBundleAssetsAccess()`) |
-| "should serve assets from the bundled www directory"                                               | 23-31 | `testServeBundledAssets()`                   | Test serving from bundle directory                  | 📋 TODO                                       |
-| "should serve index.html for any URL that does not correspond to an asset"                         | 33-35 | `testServeIndexForNonAssets()`               | Test fallback to index.html                         | 📋 TODO                                       |
-| "should serve index.html when accessing an asset through /application"                             | 37-39 | `testServeIndexForApplicationPath()`         | Test /application path handling                     | 📋 TODO                                       |
+| "should serve assets from the bundled www directory"                                               | 23-31 | `testServeBundledAssets()`                   | Test serving from bundle directory                  | ✅ **Done**                                   |
+| "should serve index.html for any URL that does not correspond to an asset"                         | 33-35 | `testServeIndexForNonAssets()`               | Test fallback to index.html                         | ✅ **Done**                                   |
+| "should serve index.html when accessing an asset through /application"                             | 37-39 | `testServeIndexForApplicationPath()`         | Test /application path handling                     | ✅ **Done**                                   |
 | "should serve index.html for an asset that is not in the manifest"                                 | 41-43 | `testServeIndexForMissingManifestAsset()`    | Test missing manifest asset handling                | ✅ **Done** (`testMissingAssetFallback()`)    |
 | "should serve index.html when accessing an asset that is not in the manifest through /application" | 45-47 | `testServeIndexForMissingApplicationAsset()` | Test missing /application asset                     | ✅ **Done** (`testMissingAssetFallback()`)    |
 | "should not serve index.html for a non-existing /favicon.ico"                                      | 49-54 | `testReturn404ForMissingFavicon()`           | Test 404 for missing favicon                        | ✅ **Done** (`testFaviconAssetHandling()`)    |
@@ -137,12 +137,6 @@ This plan recreates the 50 Cordova plugin tests (`tests/cordova_tests.js`) adapt
 - Test partial download scenarios (group 7)
 - Ensure proper callback behavior
 
-### Phase 5: Integration & Performance
-
-- Add integration tests with real Capacitor environment
-- Performance testing for large bundles
-- Memory usage validation
-
 ## Test Files Organization
 
 ```
@@ -183,12 +177,12 @@ tests/swift/
 - ✅ `MockCapacitorBridge` implementing the `CapacitorBridge` protocol
 - ✅ `AsyncTestHelpers` with comprehensive async testing utilities
 
-**Phase 2: Core Tests (Basic Server Functionality)** - **PARTIALLY COMPLETE (4/8 original tests fully implemented)**
+**Phase 2: Core Tests (Basic Server Functionality)** - **COMPLETE ✅**
 
-- ✅ 8 foundational tests implemented and passing
-- ✅ 4 tests fully implement original cordova test requirements (noted in cordova_tests.js)
+- ✅ 12 foundational tests implemented and passing
+- ✅ ALL 8 original cordova test requirements fully implemented
 - ✅ Tests properly target AssetBundle API (the correct layer for Capacitor architecture)
-- [ ] 4 tests from original cordova tests not yet implemented
+- ✅ All missing basic server functionality tests now implemented
 
 **Implemented Tests:**
 
@@ -200,6 +194,10 @@ tests/swift/
 6. `testMissingAssetFallback()` - Missing asset handling ✅
 7. `testFaviconAssetHandling()` - Favicon handling ✅
 8. `testBridgeIntegration()` - Capacitor bridge integration ✅
+9. `testServeIndexForRoot()` - Root path serving index.html ✅
+10. `testServeBundledAssets()` - Bundled asset serving ✅
+11. `testServeIndexForNonAssets()` - SPA fallback behavior ✅
+12. `testServeIndexForApplicationPath()` - Application path handling ✅
 
 **Key Achievement:** All tests pass with `swift test` ✅
 

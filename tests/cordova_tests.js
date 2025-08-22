@@ -6,6 +6,7 @@ exports.defineAutoTests = function () {
     // As a result, some of the "should serve" tests may no longer be relevant, but we should try to implement them if they make sense.
     describe('the local server', function () {
       it('should serve index.html for /', function (done) {
+        // Implemented in Swift: BasicServingTests.testServeIndexForRoot()
         fetchFromLocalServer('/').then(expectIndexPageToBeServed(done));
       });
 
@@ -22,6 +23,7 @@ exports.defineAutoTests = function () {
       });
 
       it('should serve assets from the bundled www directory', function (done) {
+        // Implemented in Swift: BasicServingTests.testServeBundledAssets()
         fetchFromLocalServer('/cordova_plugins.js').then(function (response) {
           expect(response.status).toBe(200);
           response.text().then(function (text) {
@@ -32,10 +34,12 @@ exports.defineAutoTests = function () {
       });
 
       it('should serve index.html for any URL that does not correspond to an asset', function (done) {
+        // Implemented in Swift: BasicServingTests.testServeIndexForNonAssets()
         fetchFromLocalServer('/anything').then(expectIndexPageToBeServed(done));
       });
 
       it('should serve index.html when accessing an asset through /application', function (done) {
+        // Implemented in Swift: BasicServingTests.testServeIndexForApplicationPath()
         fetchFromLocalServer('/application/packages/meteor.js').then(expectIndexPageToBeServed(done));
       });
 

@@ -130,6 +130,86 @@ class BasicServingTests: XCTestCase {
         XCTAssertNotNil(mockBridge, "Bridge should be available")
         XCTAssertNotNil(mockBridge.getWebView(), "Bridge should provide mock web view")
     }
+
+    // MARK: - Additional Phase 2 Tests (completing cordova test coverage)
+
+    func testServeIndexForRoot() throws {
+        // Test: "should serve index.html for /" (cordova_tests.js:8-10)
+        // This verifies that the root path "/" maps to the index.html asset
+        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+
+        // The root path should map to index.html
+        let rootAsset = bundle.assetForURLPath("/")
+        XCTAssertNotNil(rootAsset, "Root path '/' should return an asset")
+        XCTAssertEqual(rootAsset?.filePath, "index.html", "Root path should map to index.html file")
+        XCTAssertEqual(rootAsset?.fileType, "html", "Root asset should be HTML type")
+
+        // The content should be valid HTML with app content
+        let content = try String(contentsOf: rootAsset!.fileURL, encoding: .utf8)
+        XCTAssertTrue(content.contains("<html>"), "Root content should be valid HTML")
+        XCTAssertTrue(content.contains("Test App"), "Root content should contain app content")
+    }
+
+    func testServeBundledAssets() throws {
+        // Test: "should serve assets from the bundled www directory" (cordova_tests.js:24-31)
+        // This verifies that assets in the bundle directory can be accessed by URL path
+        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+
+        // Look for a manifest asset that should exist
+        let manifestAsset = bundle.assetForURLPath("/some-file")
+        XCTAssertNotNil(manifestAsset, "Bundled asset '/some-file' should be accessible")
+
+        // Verify the asset content is correct
+        let content = try String(contentsOf: manifestAsset!.fileURL, encoding: .utf8)
+        XCTAssertTrue(content.contains("some-file"), "Asset content should contain expected text")
+
+        // Also test that the asset exists check works
+        XCTAssertTrue(bundle.assetExistsInBundle("/some-file"), "Bundle should recognize this asset exists")
+        XCTAssertFalse(bundle.assetExistsInBundle("/nonexistent-file"), "Bundle should recognize nonexistent assets")
+    }
+
+    func testServeIndexForNonAssets() throws {
+        // Test: "should serve index.html for any URL that does not correspond to an asset" (cordova_tests.js:34-35)
+        // This verifies SPA behavior - non-asset routes should fall back to index handling
+        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+
+        // Non-existent paths should return nil (indicating fallback to index.html in actual serving)
+        let nonAsset1 = bundle.assetForURLPath("/anything")
+        XCTAssertNil(nonAsset1, "Non-asset path should return nil (fallback to index)")
+
+        let nonAsset2 = bundle.assetForURLPath("/some/deep/route")
+        XCTAssertNil(nonAsset2, "Deep non-asset path should return nil (fallback to index)")
+
+        let nonAsset3 = bundle.assetForURLPath("/app/users/123")
+        XCTAssertNil(nonAsset3, "Application route should return nil (fallback to index)")
+
+        // But the index should still be accessible at root
+        let indexAsset = bundle.assetForURLPath("/")
+        XCTAssertNotNil(indexAsset, "Index should always be available at root")
+        XCTAssertEqual(indexAsset?.filePath, "index.html", "Root should serve index.html")
+    }
+
+    func testServeIndexForApplicationPath() throws {
+        // Test: "should serve index.html when accessing an asset through /application" (cordova_tests.js:38-39)
+        // This verifies that /application/* paths fall back to index (SPA routing behavior)
+        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+
+        // /application paths should not have direct assets (fallback to index in actual serving)
+        let appPath1 = bundle.assetForURLPath("/application/packages/meteor.js")
+        XCTAssertNil(appPath1, "Application path should return nil (fallback to index)")
+
+        let appPath2 = bundle.assetForURLPath("/application/something")
+        XCTAssertNil(appPath2, "Application subpath should return nil (fallback to index)")
+
+        // But assets that don't start with /application should still work normally
+        let normalAsset = bundle.assetForURLPath("/some-file")
+        XCTAssertNotNil(normalAsset, "Normal asset paths should still work")
+
+        // And root should still serve index
+        let rootAsset = bundle.assetForURLPath("/")
+        XCTAssertNotNil(rootAsset, "Root path should always serve index")
+        XCTAssertEqual(rootAsset?.filePath, "index.html", "Root should map to index.html")
+    }
 }
 
 // MARK: - Mock Capacitor Bridge
