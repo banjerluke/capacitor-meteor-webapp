@@ -10,19 +10,19 @@
 
 import Foundation
 
-final class Timer {
+public final class Timer {
     private let queue: DispatchQueue
     private let block: () -> Void
     private var dispatchSourceTimer: DispatchSourceTimer?
 
     var tolerance: TimeInterval = 0.1
 
-    init(queue: DispatchQueue, block: @escaping () -> Void) {
+    public init(queue: DispatchQueue, block: @escaping () -> Void) {
         self.queue = queue
         self.block = block
     }
 
-    func start(withTimeInterval timeInterval: TimeInterval) {
+    public func start(withTimeInterval timeInterval: TimeInterval) {
         stop()  // Stop any existing timer
 
         dispatchSourceTimer = DispatchSource.makeTimerSource(queue: queue)
@@ -35,7 +35,7 @@ final class Timer {
         dispatchSourceTimer?.resume()
     }
 
-    func stop() {
+    public func stop() {
         dispatchSourceTimer?.cancel()
         dispatchSourceTimer = nil
     }

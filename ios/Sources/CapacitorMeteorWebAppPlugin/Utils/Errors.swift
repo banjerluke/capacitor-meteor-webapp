@@ -46,6 +46,7 @@ public enum HotCodePushError: Error, LocalizedError {
     case bundleOrganizationFailed(reason: String, underlyingError: Error?)
     case webViewUnavailable
     case downloadFailed(reason: String, underlyingError: Error?)
+    case timeoutError(reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -63,6 +64,8 @@ public enum HotCodePushError: Error, LocalizedError {
             return "WebView is not available"
         case .downloadFailed(let reason, _):
             return "Download failed: \(reason)"
+        case .timeoutError(let reason):
+            return "Operation timed out: \(reason)"
         }
     }
 

@@ -55,7 +55,8 @@ public class CapacitorMeteorWebAppPlugin: CAPPlugin, CAPBridgedPlugin {
 
     override public func load() {
         bridgeAdapter = CapacitorBridgeAdapter(bridge: self.bridge)
-        implementation = CapacitorMeteorWebApp(capacitorBridge: bridgeAdapter)
+        let dependencies = CapacitorMeteorWebAppDependencies.production()
+        implementation = CapacitorMeteorWebApp(capacitorBridge: bridgeAdapter, dependencies: dependencies)
 
         // Listen for update notifications from the implementation
         NotificationCenter.default.addObserver(

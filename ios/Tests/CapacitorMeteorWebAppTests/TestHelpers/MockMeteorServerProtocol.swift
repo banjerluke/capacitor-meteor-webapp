@@ -37,8 +37,12 @@ class MockMeteorServerProtocol: URLProtocol {
         }
 
         let urlString = url.absoluteString
+        NSLog("DEBUG MockMeteorServerProtocol: Request URL: \(urlString)")
+        NSLog("DEBUG MockMeteorServerProtocol: Version handlers count: \(MockMeteorServerProtocol.versionHandlers.count)")
 
+        // First check for exact URL match
         if let mockResponse = MockMeteorServerProtocol.mockResponses[urlString] {
+            NSLog("DEBUG MockMeteorServerProtocol: Found exact URL match")
             let response = HTTPURLResponse(
                 url: url,
                 statusCode: mockResponse.statusCode,
@@ -53,17 +57,43 @@ class MockMeteorServerProtocol: URLProtocol {
             }
 
             client?.urlProtocolDidFinishLoading(self)
-        } else {
-            let response = HTTPURLResponse(
-                url: url,
-                statusCode: 404,
-                httpVersion: "HTTP/1.1",
-                headerFields: nil
-            )!
-
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocolDidFinishLoading(self)
+            return
         }
+
+        // Check for version-specific handlers
+        let path = url.lastPathComponent
+        NSLog("DEBUG MockMeteorServerProtocol: Checking version handlers for path: \(path)")
+        for (version, handler) in MockMeteorServerProtocol.versionHandlers {
+            NSLog("DEBUG MockMeteorServerProtocol: Trying handler for version: \(version)")
+            if let data = handler(path) {
+                NSLog("DEBUG MockMeteorServerProtocol: Handler returned data for path: \(path)")
+                let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: 200,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: ["Content-Type": "application/json"]
+                )!
+
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                client?.urlProtocol(self, didLoad: data)
+                client?.urlProtocolDidFinishLoading(self)
+                return
+            } else {
+                NSLog("DEBUG MockMeteorServerProtocol: Handler returned nil for path: \(path)")
+            }
+        }
+
+        // Default fallback - return 404
+        NSLog("DEBUG MockMeteorServerProtocol: No handler found, returning 404")
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: 404,
+            httpVersion: "HTTP/1.1",
+            headerFields: nil
+        )!
+
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocolDidFinishLoading(self)
     }
 
     override func stopLoading() {

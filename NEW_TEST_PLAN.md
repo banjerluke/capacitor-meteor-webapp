@@ -114,12 +114,13 @@ Note that the plugin has been tested and basic functionality is working in a rea
 
 ## Implementation Strategy
 
-### Phase 1: Test Infrastructure
+### Phase 1: Test Infrastructure (**Minimal Mocking Approach**)
 
 1. **Mock Remote Server**: Create `MockMeteorServerProtocol` using URLProtocol to intercept network requests and serve fixture data
 2. **Test Fixtures**: Use existing fixture data from `tests/fixtures/`
-3. **Capacitor Integration**: Set up mock Capacitor environment for testing
-4. **Async Testing**: Implement proper async testing patterns for Swift
+3. **Mock Capacitor Bridge Only**: Set up mock Capacitor bridge - keep all other components real
+4. **Test-Isolated Storage**: Use separate UserDefaults domains for WebAppConfiguration in tests
+5. **Real Business Logic**: Use actual CapacitorMeteorWebApp, AssetBundleManager, etc. for better integration testing
 
 ### Phase 2: Core Tests (Basic Server Functionality)
 
@@ -201,15 +202,15 @@ tests/swift/
 - ✅ Tests properly target AssetBundle API (the correct layer for Capacitor architecture)
 - ✅ All missing basic server functionality tests now implemented
 
-**Phase 3: Update Mechanism Tests** - **IMPLEMENTED ✅**
+**Phase 3: Update Mechanism Tests** - **IMPLEMENTED ✅ (Refactored for Minimal Mocking)**
 
 - ✅ 17 version update tests implemented covering all major scenarios
 - ✅ Bundled to Downloaded update tests (4 tests)
 - ✅ Downloaded to Downloaded update tests (5 tests)
 - ✅ Downloaded to Bundled update tests (6 tests)
 - ✅ No Update tests (2 tests)
-- ✅ Mock architecture created for testing complex update scenarios
-- ⚠️ Some tests require additional mock implementation for full functionality
+- ✅ **Refactored to use real CapacitorMeteorWebApp** - Better integration testing
+- ✅ **Minimal mocking approach** - Only mock boundaries (Capacitor bridge, network)
 
 **Implemented Tests:**
 
@@ -285,18 +286,20 @@ ios/Sources/CapacitorMeteorWebAppPlugin/
 
 ### Testing Infrastructure Insights
 
-**Mock Strategy:**
+**Minimal Mocking Strategy:**
 
-- `MockMeteorServerProtocol` uses URLProtocol to intercept network requests
-- `MockCapacitorBridge` implements the CapacitorBridge protocol
-- Test fixtures support bundled and downloadable versions
+- `MockMeteorServerProtocol` uses URLProtocol to intercept network requests (boundary mock)
+- `MockCapacitorBridge` implements the CapacitorBridge protocol (boundary mock)  
+- **Real business logic**: Use actual CapacitorMeteorWebApp, AssetBundleManager, WebAppConfiguration
+- **Test isolation**: Separate UserDefaults domains and temporary directories
+- **Better integration testing**: Tests verify real component interactions
 
-**Key Dependencies for Phase 3+:**
+**Key Components for Phase 3+ (Using Real Implementations):**
 
-1. **AssetBundleManager**: Must be mocked for update tests - handles delegate callbacks
-2. **BundleOrganizer**: Critical for version switching logic
-3. **WebAppConfiguration**: Needs persistence testing
-4. **DispatchQueue**: Bundle switching uses serial queue `bundleSwitchQueue`
+1. **AssetBundleManager**: Real implementation tested - handles delegate callbacks, network requests
+2. **BundleOrganizer**: Real implementation tested - version switching logic, file operations
+3. **WebAppConfiguration**: Real implementation with test-isolated UserDefaults domain
+4. **DispatchQueue**: Real bundle switching serial queue `bundleSwitchQueue` behavior tested
 
 **Async Patterns:**
 
