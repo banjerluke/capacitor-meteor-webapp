@@ -1,2 +1,3 @@
 example-app
 tests/fixtures
+tests/cordova_tests.js
