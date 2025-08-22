@@ -39,6 +39,7 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
     private var downloadedAssetBundlesByVersion: [String: AssetBundle]
 
     private var session: URLSession!
+    private let urlSessionConfiguration: URLSessionConfiguration
 
     private var downloadDirectoryURL: URL
     private var assetBundleDownloader: AssetBundleDownloader?
@@ -49,11 +50,15 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
     }
 
     init(
-        configuration: WebAppConfiguration, versionsDirectoryURL: URL, initialAssetBundle: AssetBundle
+        configuration: WebAppConfiguration,
+        versionsDirectoryURL: URL,
+        initialAssetBundle: AssetBundle,
+        urlSessionConfiguration: URLSessionConfiguration = .default
     ) {
         self.configuration = configuration
         self.versionsDirectoryURL = versionsDirectoryURL
         self.initialAssetBundle = initialAssetBundle
+        self.urlSessionConfiguration = urlSessionConfiguration
 
         downloadDirectoryURL = versionsDirectoryURL.appendingPathComponent("Downloading")
 
@@ -70,7 +75,7 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         // (which we disable for the session we use to download the other files
         // in AssetBundleDownloader)
         session = URLSession(
-            configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: operationQueue)
+            configuration: urlSessionConfiguration, delegate: nil, delegateQueue: operationQueue)
     }
 
     deinit {
@@ -303,7 +308,7 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
 
         assetBundleDownloader = AssetBundleDownloader(
             configuration: configuration, assetBundle: assetBundle, baseURL: baseURL,
-            missingAssets: missingAssets)
+            missingAssets: missingAssets, urlSessionConfiguration: urlSessionConfiguration)
         assetBundleDownloader!.delegate = self
         assetBundleDownloader!.resume()
     }

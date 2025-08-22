@@ -75,6 +75,17 @@ public protocol CapacitorBridge: AnyObject {
     /// Track if we switched to a new version (for startup timer)
     private var switchedToNewVersion = false
 
+    // MARK: - Public API
+
+    /// Get the current serving directory path for the active bundle
+    /// This is the directory that Capacitor's server serves assets from
+    public func getCurrentServingDirectory() -> String {
+        guard let currentAssetBundle = currentAssetBundle else {
+            return ""
+        }
+        return dependencies.servingDirectoryURL.appendingPathComponent(currentAssetBundle.version).path
+    }
+
     // MARK: - Initialization
 
     /// Initialize with production dependencies
@@ -190,7 +201,7 @@ public protocol CapacitorBridge: AnyObject {
 
         assetBundleManager = AssetBundleManager(
             configuration: configuration, versionsDirectoryURL: versionsDirectoryURL,
-            initialAssetBundle: initialAssetBundle)
+            initialAssetBundle: initialAssetBundle, urlSessionConfiguration: dependencies.urlSessionConfiguration)
         assetBundleManager.delegate = self
 
         // Select bundle AFTER validation (configuration.lastDownloadedVersion may have been cleared)
@@ -615,11 +626,11 @@ public protocol CapacitorBridge: AnyObject {
         // Process run loop until completion, but avoid blocking main thread indefinitely
         let runLoop = RunLoop.current
         let timeout = Date().addingTimeInterval(10.0) // 10 second timeout
-        
+
         while !completed && Date() < timeout {
             runLoop.run(until: Date().addingTimeInterval(0.01))
         }
-        
+
         if !completed {
             throw HotCodePushError.timeoutError(reason: "Reload operation timed out")
         }
@@ -646,12 +657,12 @@ public protocol CapacitorBridge: AnyObject {
     internal func onStartupComplete() {
         // Stop the startup timer and mark version as good if we switched to a new version
         startupTimer?.stop()
-        
+
         if switchedToNewVersion {
             configuration.lastKnownGoodVersion = currentAssetBundle.version
             switchedToNewVersion = false
         }
-        
+
         // Cleanup old versions could be implemented here if needed
         // For now, we'll skip the cleanup in tests
     }

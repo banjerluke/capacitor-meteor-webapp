@@ -76,6 +76,7 @@ public struct CapacitorMeteorWebAppDependencies {
     public let wwwDirectoryURL: URL
     public let servingDirectoryURL: URL
     public let versionsDirectoryURL: URL
+    public let urlSessionConfiguration: URLSessionConfiguration
 
     public init(
         configuration: WebAppConfiguration,
@@ -85,7 +86,8 @@ public struct CapacitorMeteorWebAppDependencies {
         capacitorBridge: CapacitorBridge?,
         wwwDirectoryURL: URL,
         servingDirectoryURL: URL,
-        versionsDirectoryURL: URL
+        versionsDirectoryURL: URL,
+        urlSessionConfiguration: URLSessionConfiguration = .default
     ) {
         self.configuration = configuration
         self.fileSystem = fileSystem
@@ -95,6 +97,7 @@ public struct CapacitorMeteorWebAppDependencies {
         self.wwwDirectoryURL = wwwDirectoryURL
         self.servingDirectoryURL = servingDirectoryURL
         self.versionsDirectoryURL = versionsDirectoryURL
+        self.urlSessionConfiguration = urlSessionConfiguration
     }
 
     // Default production dependencies
@@ -140,7 +143,8 @@ public struct CapacitorMeteorWebAppDependencies {
             capacitorBridge: capacitorBridge,
             wwwDirectoryURL: wwwDirectoryURL,
             servingDirectoryURL: servingDirectoryURL,
-            versionsDirectoryURL: versionsDirectoryURL
+            versionsDirectoryURL: versionsDirectoryURL,
+            urlSessionConfiguration: .default
         )
     }
 
@@ -152,7 +156,8 @@ public struct CapacitorMeteorWebAppDependencies {
         servingDirectoryURL: URL,
         versionsDirectoryURL: URL,
         fileSystem: FileSystemProvider = FileManager.default,
-        timerProvider: TimerProvider = SystemTimerProvider()
+        timerProvider: TimerProvider = SystemTimerProvider(),
+        urlSessionConfiguration: URLSessionConfiguration = .default
     ) -> CapacitorMeteorWebAppDependencies {
 
         let configuration = WebAppConfiguration(userDefaultsSuiteName: userDefaultsSuiteName)
@@ -165,7 +170,8 @@ public struct CapacitorMeteorWebAppDependencies {
             capacitorBridge: capacitorBridge,
             wwwDirectoryURL: wwwDirectoryURL,
             servingDirectoryURL: servingDirectoryURL,
-            versionsDirectoryURL: versionsDirectoryURL
+            versionsDirectoryURL: versionsDirectoryURL,
+            urlSessionConfiguration: urlSessionConfiguration
         )
     }
 }

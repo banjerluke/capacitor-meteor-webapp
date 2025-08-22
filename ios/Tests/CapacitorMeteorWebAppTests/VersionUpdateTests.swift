@@ -16,7 +16,7 @@ class VersionUpdateTests: XCTestCase {
 
         // Register mock protocol for network requests
         URLProtocol.registerClass(MockMeteorServerProtocol.self)
-        
+
         // Also register with URLSessionConfiguration.default to handle sessions created by AssetBundleManager
         let defaultConfig = URLSessionConfiguration.default
         defaultConfig.protocolClasses = [MockMeteorServerProtocol.self] + (defaultConfig.protocolClasses ?? [])
@@ -32,7 +32,7 @@ class VersionUpdateTests: XCTestCase {
         let result = try TestDependencyFactory.createTestDependencies()
         testDependencies = result.dependencies
         testMocks = result.mocks
-        
+
         // Override the www directory to use our test fixture
         testDependencies = CapacitorMeteorWebAppDependencies.test(
             capacitorBridge: testMocks.capacitorBridge,
@@ -88,9 +88,9 @@ class VersionUpdateTests: XCTestCase {
         // Since the real API doesn't expose internal pending bundle setting,
         // we'll test the actual update workflow using checkForUpdates()
         // This test demonstrates the dependency injection approach is working
-        
+
         XCTAssertFalse(meteorWebApp.isUpdateAvailable(), "Should not have update available initially")
-        
+
         // The real test would involve setting up MockMeteorServerProtocol to provide a new version
         // and then calling checkForUpdates() followed by reload()
         // For now, we verify the basic functionality works with dependency injection

@@ -37,62 +37,71 @@ class MockMeteorServerProtocol: URLProtocol {
         }
 
         let urlString = url.absoluteString
+        let path = url.path
         NSLog("DEBUG MockMeteorServerProtocol: Request URL: \(urlString)")
-        NSLog("DEBUG MockMeteorServerProtocol: Version handlers count: \(MockMeteorServerProtocol.versionHandlers.count)")
+        NSLog("DEBUG MockMeteorServerProtocol: Request Path: \(path)")
 
         // First check for exact URL match
         if let mockResponse = MockMeteorServerProtocol.mockResponses[urlString] {
             NSLog("DEBUG MockMeteorServerProtocol: Found exact URL match")
-            let response = HTTPURLResponse(
-                url: url,
-                statusCode: mockResponse.statusCode,
-                httpVersion: "HTTP/1.1",
-                headerFields: mockResponse.headers
-            )!
-
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-
-            if let data = mockResponse.data {
-                client?.urlProtocol(self, didLoad: data)
-            }
-
-            client?.urlProtocolDidFinishLoading(self)
+            sendResponse(mockResponse, for: url)
             return
         }
 
+        // Match by path pattern instead of exact URL
+        if path.hasSuffix("/manifest.json") {
+            NSLog("DEBUG MockMeteorServerProtocol: Handling manifest request")
+            // Look for manifest response in mock responses
+            for (key, response) in MockMeteorServerProtocol.mockResponses {
+                if key.contains("manifest.json") {
+                    sendResponse(response, for: url)
+                    return
+                }
+            }
+        } else if path.contains("/__cordova/") {
+            NSLog("DEBUG MockMeteorServerProtocol: Handling asset request for path: \(path)")
+            // Look for asset responses by path pattern
+            for (key, response) in MockMeteorServerProtocol.mockResponses {
+                if key.contains("/__cordova/") && urlString.hasSuffix(path.components(separatedBy: "/__cordova/").last ?? "") {
+                    sendResponse(response, for: url)
+                    return
+                }
+            }
+        }
+
         // Check for version-specific handlers
-        let path = url.lastPathComponent
-        NSLog("DEBUG MockMeteorServerProtocol: Checking version handlers for path: \(path)")
+        let pathComponent = url.lastPathComponent
+        NSLog("DEBUG MockMeteorServerProtocol: Checking version handlers for path component: \(pathComponent)")
         for (version, handler) in MockMeteorServerProtocol.versionHandlers {
             NSLog("DEBUG MockMeteorServerProtocol: Trying handler for version: \(version)")
-            if let data = handler(path) {
-                NSLog("DEBUG MockMeteorServerProtocol: Handler returned data for path: \(path)")
-                let response = HTTPURLResponse(
-                    url: url,
-                    statusCode: 200,
-                    httpVersion: "HTTP/1.1",
-                    headerFields: ["Content-Type": "application/json"]
-                )!
-
-                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-                client?.urlProtocol(self, didLoad: data)
-                client?.urlProtocolDidFinishLoading(self)
+            if let data = handler(pathComponent) {
+                NSLog("DEBUG MockMeteorServerProtocol: Handler returned data for path: \(pathComponent)")
+                let mockResponse = MockResponse(data: data, statusCode: 200, headers: ["Content-Type": "application/json"])
+                sendResponse(mockResponse, for: url)
                 return
-            } else {
-                NSLog("DEBUG MockMeteorServerProtocol: Handler returned nil for path: \(path)")
             }
         }
 
         // Default fallback - return 404
         NSLog("DEBUG MockMeteorServerProtocol: No handler found, returning 404")
+        let mockResponse = MockResponse(data: nil, statusCode: 404, headers: nil)
+        sendResponse(mockResponse, for: url)
+    }
+
+    private func sendResponse(_ mockResponse: MockResponse, for url: URL) {
         let response = HTTPURLResponse(
             url: url,
-            statusCode: 404,
+            statusCode: mockResponse.statusCode,
             httpVersion: "HTTP/1.1",
-            headerFields: nil
+            headerFields: mockResponse.headers
         )!
 
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+        if let data = mockResponse.data {
+            client?.urlProtocol(self, didLoad: data)
+        }
+
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -110,7 +119,7 @@ class MockMeteorServerProtocol: URLProtocol {
     }
 
     static func setMockManifest(baseURL: String, version: String, manifest: [String: Any]) {
-        let manifestURL = "\(baseURL)/__cordova/manifest.json"
+        let manifestURL = "\(baseURL)/manifest.json"
 
         do {
             let data = try JSONSerialization.data(withJSONObject: manifest, options: [])
@@ -121,7 +130,7 @@ class MockMeteorServerProtocol: URLProtocol {
     }
 
     static func setMockAsset(baseURL: String, path: String, content: String) {
-        let assetURL = "\(baseURL)/__cordova/\(path)"
+        let assetURL = "\(baseURL)/\(path)"
         let data = content.data(using: .utf8)
         setMockResponse(for: assetURL, response: MockResponse(data: data))
     }

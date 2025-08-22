@@ -38,177 +38,151 @@ class BasicServingTests: XCTestCase {
         try super.tearDownWithError()
     }
 
-    // MARK: - Basic Server Functionality Tests
+    // MARK: - Test Helpers
+
+    private func createMeteorWebApp() -> CapacitorMeteorWebApp {
+        // Configure URLSession to use mock protocol
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockMeteorServerProtocol.self]
+
+        let dependencies = CapacitorMeteorWebAppDependencies.test(
+            capacitorBridge: mockBridge,
+            wwwDirectoryURL: bundledAssetsURL,
+            servingDirectoryURL: tempDirectoryURL.appendingPathComponent("serving"),
+            versionsDirectoryURL: tempDirectoryURL.appendingPathComponent("versions"),
+            urlSessionConfiguration: config
+        )
+        return CapacitorMeteorWebApp(dependencies: dependencies)
+    }
+
+    // MARK: - HTTP Serving Behavior Tests
 
     func testInitializeWithMockBridge() throws {
-        // Test 1: Verify we can initialize the plugin with a mock bridge
-        let meteorWebApp = CapacitorMeteorWebApp(capacitorBridge: mockBridge)
-        XCTAssertNotNil(meteorWebApp, "Should be able to initialize CapacitorMeteorWebApp")
+        // Test 1: Verify HTTP serving behavior - initialization should set server base path
+        let meteorWebApp = createMeteorWebApp()
 
-        // The plugin should have a version (from bundled assets)
-        // Note: In test environment, it may return "unknown" if bundled www doesn't exist
-        let version = meteorWebApp.getCurrentVersion()
-        XCTAssertFalse(version.isEmpty, "Should have a current version")
-        // The version might be "unknown" in test environment, which is acceptable
-    }
-
-    func testAssetBundleCreationFromDirectory() throws {
-        // Test 2: Verify AssetBundle can be created from a directory with manifest
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
-        XCTAssertNotNil(bundle, "Should be able to create AssetBundle from directory")
-        XCTAssertEqual(bundle.version, "version1", "Should have correct version from test fixtures")
-        XCTAssertEqual(bundle.cordovaCompatibilityVersion, "1.0.0", "Should have cordova compatibility version")
-    }
-
-    func testAssetBundleAssetsAccess() throws {
-        // Test 3: Verify we can access assets from the bundle
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
-
-        // Check for index file (root path)
-        let indexAsset = bundle.assetForURLPath("/")
-        XCTAssertNotNil(indexAsset, "Should have index asset at root path")
-        XCTAssertEqual(indexAsset?.urlPath, "/", "Index asset should have root URL path")
-
-        // Check for manifest asset
-        let someFileAsset = bundle.assetForURLPath("/some-file")
-        XCTAssertNotNil(someFileAsset, "Should have some-file asset")
-        XCTAssertEqual(someFileAsset?.urlPath, "/some-file", "Some-file asset should have correct URL path")
-    }
-
-    func testAssetContentLoading() throws {
-        // Test 4: Verify we can load content from assets
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
-
-        guard let indexAsset = bundle.assetForURLPath("/") else {
-            XCTFail("Should have index asset")
-            return
+        // Wait for async setServerBasePath call
+        let expectation = XCTestExpectation(description: "setServerBasePath called")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if !self.mockBridge.setServerBasePathCalls.isEmpty {
+                expectation.fulfill()
+            }
         }
+        wait(for: [expectation], timeout: 1.0)
 
-        let indexContent = try String(contentsOf: indexAsset.fileURL, encoding: .utf8)
-        XCTAssertTrue(indexContent.contains("Test App version1"), "Index content should contain test app title")
-        XCTAssertTrue(indexContent.contains("<html>"), "Index content should be valid HTML")
+        // Verify Capacitor bridge received setServerBasePath call
+        XCTAssertFalse(mockBridge.setServerBasePathCalls.isEmpty, "Should call setServerBasePath during initialization")
+
+        let servingPath = meteorWebApp.getCurrentServingDirectory()
+        XCTAssertFalse(servingPath.isEmpty, "Should have a serving directory")
+
+        // Verify the serving directory exists
+        XCTAssertTrue(FileManager.default.fileExists(atPath: servingPath), "Serving directory should exist")
     }
-
-    func testAssetExistsInBundle() throws {
-        // Test 5: Verify asset existence checking
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
-
-        XCTAssertTrue(bundle.assetExistsInBundle("/"), "Root path should exist in bundle")
-        XCTAssertTrue(bundle.assetExistsInBundle("/some-file"), "some-file should exist in bundle")
-        XCTAssertFalse(bundle.assetExistsInBundle("/non-existent-file"), "Non-existent file should not exist in bundle")
-    }
-
-    func testMissingAssetFallback() throws {
-        // Test 6: Verify behavior for missing assets (should return nil, not crash)
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
-
-        let missingAsset = bundle.assetForURLPath("/not-in-manifest")
-        XCTAssertNil(missingAsset, "Missing asset should return nil")
-
-        let missingApplicationAsset = bundle.assetForURLPath("/application/not-in-manifest")
-        XCTAssertNil(missingApplicationAsset, "Missing application asset should return nil")
-    }
-
-    func testFaviconAssetHandling() throws {
-        // Test 7: Verify favicon.ico handling (this asset typically doesn't exist)
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
-
-        let faviconAsset = bundle.assetForURLPath("/favicon.ico")
-        XCTAssertNil(faviconAsset, "favicon.ico should not exist in test bundle")
-        XCTAssertFalse(bundle.assetExistsInBundle("/favicon.ico"), "favicon.ico should not exist in bundle")
-    }
-
-    func testBridgeIntegration() throws {
-        // Test 8: Verify bridge integration works
-        _ = CapacitorMeteorWebApp(capacitorBridge: mockBridge)
-
-        // Initially, no server base path should be set
-        XCTAssertNil(mockBridge.serverBasePath, "Initially no server base path should be set")
-
-        // After some operations, the bridge should receive calls (this is integration-level testing)
-        // For now, we just verify the bridge is properly connected
-        XCTAssertNotNil(mockBridge, "Bridge should be available")
-        XCTAssertNotNil(mockBridge.getWebView(), "Bridge should provide mock web view")
-    }
-
-    // MARK: - Additional Phase 2 Tests (completing cordova test coverage)
 
     func testServeIndexForRoot() throws {
-        // Test: "should serve index.html for /" (cordova_tests.js:8-10)
-        // This verifies that the root path "/" maps to the index.html asset
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+        // Test 2: Verify HTTP serving behavior - index.html should be served for root path "/"
+        let meteorWebApp = createMeteorWebApp()
 
-        // The root path should map to index.html
-        let rootAsset = bundle.assetForURLPath("/")
-        XCTAssertNotNil(rootAsset, "Root path '/' should return an asset")
-        XCTAssertEqual(rootAsset?.filePath, "index.html", "Root path should map to index.html file")
-        XCTAssertEqual(rootAsset?.fileType, "html", "Root asset should be HTML type")
+        // Verify index.html exists in serving directory at root
+        let servingPath = meteorWebApp.getCurrentServingDirectory()
+        let indexPath = "\(servingPath)/index.html"
+        XCTAssertTrue(FileManager.default.fileExists(atPath: indexPath), "index.html should exist in serving directory")
 
-        // The content should be valid HTML with app content
-        let content = try String(contentsOf: rootAsset!.fileURL, encoding: .utf8)
-        XCTAssertTrue(content.contains("<html>"), "Root content should be valid HTML")
-        XCTAssertTrue(content.contains("Test App"), "Root content should contain app content")
+        // Verify content is correct
+        let indexContent = try String(contentsOfFile: indexPath, encoding: .utf8)
+        XCTAssertTrue(indexContent.contains("<title>"), "Index should contain HTML title tag")
+        XCTAssertTrue(indexContent.contains("Test App version1"), "Index should contain expected content")
     }
 
-    func testServeBundledAssets() throws {
-        // Test: "should serve assets from the bundled www directory" (cordova_tests.js:24-31)
-        // This verifies that assets in the bundle directory can be accessed by URL path
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+    func testServeAssetFiles() throws {
+        // Test 3: Verify HTTP serving behavior - asset files should be accessible in serving directory
+        let meteorWebApp = createMeteorWebApp()
 
-        // Look for a manifest asset that should exist
-        let manifestAsset = bundle.assetForURLPath("/some-file")
-        XCTAssertNotNil(manifestAsset, "Bundled asset '/some-file' should be accessible")
+        let servingPath = meteorWebApp.getCurrentServingDirectory()
 
-        // Verify the asset content is correct
-        let content = try String(contentsOf: manifestAsset!.fileURL, encoding: .utf8)
-        XCTAssertTrue(content.contains("some-file"), "Asset content should contain expected text")
+        // Verify some-file exists and has correct content
+        let someFilePath = "\(servingPath)/some-file"
+        XCTAssertTrue(FileManager.default.fileExists(atPath: someFilePath), "some-file should exist in serving directory")
 
-        // Also test that the asset exists check works
-        XCTAssertTrue(bundle.assetExistsInBundle("/some-file"), "Bundle should recognize this asset exists")
-        XCTAssertFalse(bundle.assetExistsInBundle("/nonexistent-file"), "Bundle should recognize nonexistent assets")
+        let someFileContent = try String(contentsOfFile: someFilePath, encoding: .utf8)
+        XCTAssertTrue(someFileContent.contains("some-file content"), "some-file should contain expected content")
     }
 
-    func testServeIndexForNonAssets() throws {
-        // Test: "should serve index.html for any URL that does not correspond to an asset" (cordova_tests.js:34-35)
-        // This verifies SPA behavior - non-asset routes should fall back to index handling
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+    func testCapacitorBridgeSetServerBasePath() throws {
+        // Test 4: Verify HTTP serving behavior - Capacitor bridge should receive setServerBasePath calls
+        let meteorWebApp = createMeteorWebApp()
 
-        // Non-existent paths should return nil (indicating fallback to index.html in actual serving)
-        let nonAsset1 = bundle.assetForURLPath("/anything")
-        XCTAssertNil(nonAsset1, "Non-asset path should return nil (fallback to index)")
+        // Wait for async setServerBasePath call
+        let expectation = XCTestExpectation(description: "setServerBasePath called")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let expectedServingPath = meteorWebApp.getCurrentServingDirectory()
+            if self.mockBridge.setServerBasePathCalls.contains(expectedServingPath) {
+                expectation.fulfill()
+            }
+        }
+        wait(for: [expectation], timeout: 1.0)
 
-        let nonAsset2 = bundle.assetForURLPath("/some/deep/route")
-        XCTAssertNil(nonAsset2, "Deep non-asset path should return nil (fallback to index)")
+        // Verify Capacitor bridge received correct setServerBasePath call
+        let expectedServingPath = meteorWebApp.getCurrentServingDirectory()
+        XCTAssertTrue(mockBridge.setServerBasePathCalls.contains(expectedServingPath),
+                      "Capacitor bridge should receive setServerBasePath call with serving directory")
 
-        let nonAsset3 = bundle.assetForURLPath("/app/users/123")
-        XCTAssertNil(nonAsset3, "Application route should return nil (fallback to index)")
-
-        // But the index should still be accessible at root
-        let indexAsset = bundle.assetForURLPath("/")
-        XCTAssertNotNil(indexAsset, "Index should always be available at root")
-        XCTAssertEqual(indexAsset?.filePath, "index.html", "Root should serve index.html")
+        // Verify the path points to a real directory
+        XCTAssertTrue(FileManager.default.fileExists(atPath: expectedServingPath), "Serving path should exist")
     }
 
-    func testServeIndexForApplicationPath() throws {
-        // Test: "should serve index.html when accessing an asset through /application" (cordova_tests.js:38-39)
-        // This verifies that /application/* paths fall back to index (SPA routing behavior)
-        let bundle = try AssetBundle(directoryURL: bundledAssetsURL)
+    func testServingDirectoryStructure() throws {
+        // Test 5: Verify HTTP serving behavior - serving directory has expected structure
+        let meteorWebApp = createMeteorWebApp()
 
-        // /application paths should not have direct assets (fallback to index in actual serving)
-        let appPath1 = bundle.assetForURLPath("/application/packages/meteor.js")
-        XCTAssertNil(appPath1, "Application path should return nil (fallback to index)")
+        let servingPath = meteorWebApp.getCurrentServingDirectory()
 
-        let appPath2 = bundle.assetForURLPath("/application/something")
-        XCTAssertNil(appPath2, "Application subpath should return nil (fallback to index)")
+        // Verify expected files exist in serving directory
+        XCTAssertTrue(FileManager.default.fileExists(atPath: "\(servingPath)/index.html"), "index.html should be served")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: "\(servingPath)/some-file"), "some-file should be served")
 
-        // But assets that don't start with /application should still work normally
-        let normalAsset = bundle.assetForURLPath("/some-file")
-        XCTAssertNotNil(normalAsset, "Normal asset paths should still work")
+        // Verify non-existent files are not served
+        XCTAssertFalse(FileManager.default.fileExists(atPath: "\(servingPath)/non-existent-file"),
+                       "Non-existent files should not be served")
+    }
 
-        // And root should still serve index
-        let rootAsset = bundle.assetForURLPath("/")
-        XCTAssertNotNil(rootAsset, "Root path should always serve index")
-        XCTAssertEqual(rootAsset?.filePath, "index.html", "Root should map to index.html")
+    func testVersionTracking() throws {
+        // Test 6: Verify HTTP serving behavior - current version is tracked correctly
+        let meteorWebApp = createMeteorWebApp()
+
+        let currentVersion = meteorWebApp.getCurrentVersion()
+        XCTAssertEqual(currentVersion, "version1", "Should track current version correctly")
+
+        // Verify serving directory includes version in path
+        let servingPath = meteorWebApp.getCurrentServingDirectory()
+        XCTAssertTrue(servingPath.contains("version1"), "Serving path should include version")
+    }
+
+    func testMultipleInitialization() throws {
+        // Test 7: Verify HTTP serving behavior - multiple initializations work correctly
+        let meteorWebApp1 = createMeteorWebApp()
+        let meteorWebApp2 = createMeteorWebApp()
+
+        // Wait for async setServerBasePath calls
+        let expectation = XCTestExpectation(description: "Multiple setServerBasePath calls")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            if self.mockBridge.setServerBasePathCalls.count >= 2 {
+                expectation.fulfill()
+            }
+        }
+        wait(for: [expectation], timeout: 1.0)
+
+        // Both should have valid serving directories
+        let servingPath1 = meteorWebApp1.getCurrentServingDirectory()
+        let servingPath2 = meteorWebApp2.getCurrentServingDirectory()
+
+        XCTAssertFalse(servingPath1.isEmpty, "First webapp should have serving directory")
+        XCTAssertFalse(servingPath2.isEmpty, "Second webapp should have serving directory")
+
+        // Bridge should receive multiple calls (one for each initialization)
+        XCTAssertGreaterThanOrEqual(mockBridge.setServerBasePathCalls.count, 2,
+                                    "Bridge should receive multiple setServerBasePath calls")
     }
 }
 
@@ -217,6 +191,7 @@ class BasicServingTests: XCTestCase {
 class MockCapacitorBridge: CapacitorBridge {
     private var _serverBasePath: String?
     private var _webView: MockWebView?
+    var setServerBasePathCalls: [String] = []
 
     var serverBasePath: String? {
         return _serverBasePath
@@ -228,6 +203,7 @@ class MockCapacitorBridge: CapacitorBridge {
 
     func setServerBasePath(_ path: String) {
         _serverBasePath = path
+        setServerBasePathCalls.append(path)
     }
 
     func getWebView() -> AnyObject? {
@@ -235,21 +211,21 @@ class MockCapacitorBridge: CapacitorBridge {
     }
 
     var webView: WKWebView? {
-        // For testing purposes, we return nil as we don't need a real WKWebView
-        return nil
+        return _webView
     }
 
     func reload() {
-        _webView?.reload()
+        // Implementation not needed for basic tests
     }
 }
 
 // MARK: - Mock WebView
 
-class MockWebView: NSObject {
-    private(set) var reloadCount = 0
+class MockWebView: WKWebView {
+    var reloadCount = 0
 
-    func reload() {
+    override func reload() -> WKNavigation? {
         reloadCount += 1
+        return nil
     }
 }

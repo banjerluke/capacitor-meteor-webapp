@@ -45,7 +45,7 @@ final class DependencyInjectionExampleTests: XCTestCase {
         try createMinimalWwwBundle(at: dependencies.wwwDirectoryURL)
 
         // Initialize webapp
-        let _ = CapacitorMeteorWebApp(dependencies: dependencies)
+        _ = CapacitorMeteorWebApp(dependencies: dependencies)
 
         // Get the created timer
         guard let timer = mocks.timerProvider.createdTimers.first else {
