@@ -9,6 +9,8 @@ This plan recreates the 50 Cordova plugin tests (`tests/cordova_tests.js`) adapt
 - **Directory-based serving**: Replaces HTTP server endpoints
 - **Native Swift logic**: Replaces JavaScript coordination
 
+Note that the plugin has been tested and basic functionality is working in a real Capacitor app, so keep that in mind if you have failures for tests you've written.
+
 ## Test Structure Mapping
 
 ### 1. Basic Server Functionality Tests
@@ -159,6 +161,21 @@ tests/swift/
 3. **Mock Remote Server → URLProtocol Mocking**: Use URLProtocol to intercept network requests and serve fixture data without actual HTTP server
 4. **Version Management → Bundle Management**: Test bundle copying and organization instead of in-memory serving
 
+## Critical Architecture Insight ⚡
+
+**The plugin works by:**
+
+1. **Organizing assets** into a serving directory based on their URL paths
+2. **Using Capacitor's `setServerBasePath()`** to serve from that directory
+3. **Handling non-asset routes** by serving index.html (typical SPA behavior)
+
+**For testing, this means:**
+
+- Tests should verify the **logical behavior** of asset resolution, not actual HTTP serving
+- Unit tests focus on AssetBundle API (URL path → asset mapping)
+- Integration behavior is handled by Capacitor's built-in server
+- Bundle organization and switching logic is the core functionality to test
+
 ## Success Criteria
 
 - [ ] All 50 original test scenarios covered
@@ -200,6 +217,13 @@ tests/swift/
 12. `testServeIndexForApplicationPath()` - Application path handling ✅
 
 **Key Achievement:** All tests pass with `swift test` ✅
+
+**Phase 2 Key Insights:**
+
+- Tests correctly verify **logical asset resolution** behavior (URL path → asset mapping)
+- AssetBundle API is the right testing layer for Capacitor architecture
+- SPA behavior (non-asset routes fallback to index.html) properly tested via nil returns
+- Foundation ready for complex update mechanism testing in Phase 3
 
 ### 📋 Next Steps: Phase 3 (Update Mechanism Tests)
 
@@ -311,3 +335,45 @@ class MockWebAppConfiguration: WebAppConfiguration
 2. **Implement delegate callback testing** - essential for update flow verification
 3. **Test bundle switching state management** - currentAssetBundle vs pendingAssetBundle
 4. **Add configuration persistence tests** - version tracking between app restarts
+
+## Test Implementation Workflow 🔄
+
+**Required workflow for implementing new test phases:**
+
+### 1. Update Cordova Test Comments
+
+- Add comments to `tests/cordova_tests.js` referencing the mapped Swift tests
+- **Example format:** `// Implemented in Swift: BasicServingTests.testAssetBundleAssetsAccess()`
+- This creates bidirectional traceability between original and new tests
+
+### 2. Verify Tests Work
+
+- **Always run `swift test`** after implementing new tests to confirm they pass
+- Fix any compilation or runtime issues before proceeding
+- Ensure all existing tests continue to pass
+
+### 3. Format Code
+
+- **Always run `npm run fmt`** after confirming tests work
+- This runs ESLint, Prettier, and SwiftLint to maintain code quality
+- Required before considering test implementation complete
+
+### 4. Update Test Plan Status
+
+- Update this NEW_TEST_PLAN.md file with completion status
+- Mark tests as ✅ **Done** in the status tables above
+- Document any key insights or architectural discoveries
+
+**Complete workflow example:**
+
+```bash
+# 1. Implement Swift tests
+# 2. Add comments to cordova_tests.js
+# 3. Verify tests work
+swift test
+# 4. Format code
+npm run fmt
+# 5. Update NEW_TEST_PLAN.md status
+```
+
+This workflow ensures quality, maintainability, and traceability throughout the testing implementation.
