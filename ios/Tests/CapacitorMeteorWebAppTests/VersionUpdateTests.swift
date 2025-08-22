@@ -17,10 +17,6 @@ class VersionUpdateTests: XCTestCase {
         // Register mock protocol for network requests
         URLProtocol.registerClass(MockMeteorServerProtocol.self)
 
-        // Also register with URLSessionConfiguration.default to handle sessions created by AssetBundleManager
-        let defaultConfig = URLSessionConfiguration.default
-        defaultConfig.protocolClasses = [MockMeteorServerProtocol.self] + (defaultConfig.protocolClasses ?? [])
-
         // Create temporary directory for test bundles
         tempDirectoryURL = TestFixtures.shared.createTempDirectory()
         bundledAssetsURL = tempDirectoryURL.appendingPathComponent("bundled")
@@ -29,7 +25,9 @@ class VersionUpdateTests: XCTestCase {
         TestFixtures.shared.createMockBundleStructure(at: bundledAssetsURL)
 
         // Create test dependencies using dependency injection
-        let result = try TestDependencyFactory.createTestDependencies()
+        let result = try TestDependencyFactory.createTestDependencies(
+            userDefaultsSuiteName: "test-version-update-\(UUID().uuidString)"
+        )
         testDependencies = result.dependencies
         testMocks = result.mocks
 
@@ -41,7 +39,8 @@ class VersionUpdateTests: XCTestCase {
             servingDirectoryURL: testDependencies.servingDirectoryURL,
             versionsDirectoryURL: testDependencies.versionsDirectoryURL,
             fileSystem: testMocks.fileSystem,
-            timerProvider: testMocks.timerProvider
+            timerProvider: testMocks.timerProvider,
+            urlSessionConfiguration: testDependencies.urlSessionConfiguration
         )
     }
 

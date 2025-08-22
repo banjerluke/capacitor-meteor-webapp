@@ -120,6 +120,10 @@ public class TestDependencyFactory {
         mockCapacitorBridge: TestMockCapacitorBridge = TestMockCapacitorBridge()
     ) throws -> (dependencies: CapacitorMeteorWebAppDependencies, mocks: TestMocks) {
 
+        // Create URLSessionConfiguration with mock protocol
+        let urlSessionConfig = URLSessionConfiguration.ephemeral
+        urlSessionConfig.protocolClasses = [MockMeteorServerProtocol.self]
+
         // Create temporary directories for testing
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("capacitor-meteor-test-\(UUID().uuidString)")
         let wwwDir = tempDir.appendingPathComponent("www")
@@ -144,7 +148,8 @@ public class TestDependencyFactory {
             servingDirectoryURL: servingDir,
             versionsDirectoryURL: versionsDir,
             fileSystem: mockFileSystem,
-            timerProvider: mockTimerProvider
+            timerProvider: mockTimerProvider,
+            urlSessionConfiguration: urlSessionConfig
         )
 
         let mocks = TestMocks(
