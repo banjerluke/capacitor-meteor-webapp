@@ -10,6 +10,7 @@ exports.defineAutoTests = function () {
       });
 
       it('should serve assets based on the URL in the manifest', function (done) {
+        // Implemented in Swift: BasicServingTests.testAssetBundleAssetsAccess()
         // The file path is app/some-file, while the URL is /some-file
         fetchFromLocalServer('/some-file').then(function (response) {
           expect(response.status).toBe(200);
@@ -39,14 +40,17 @@ exports.defineAutoTests = function () {
       });
 
       it('should serve index.html for an asset that is not in the manifest', function (done) {
+        // Implemented in Swift: BasicServingTests.testMissingAssetFallback()
         fetchFromLocalServer('/not-in-manifest').then(expectIndexPageToBeServed(done));
       });
 
       it('should serve index.html when accessing an asset that is not in the manifest through /application', function (done) {
+        // Implemented in Swift: BasicServingTests.testMissingAssetFallback()
         fetchFromLocalServer('/application/not-in-manifest').then(expectIndexPageToBeServed(done));
       });
 
       it('should not serve index.html for a non-existing /favicon.ico', function (done) {
+        // Implemented in Swift: BasicServingTests.testFaviconAssetHandling()
         fetchFromLocalServer('/favicon.ico').then(function (response) {
           expect(response.status).toBe(404);
           done();

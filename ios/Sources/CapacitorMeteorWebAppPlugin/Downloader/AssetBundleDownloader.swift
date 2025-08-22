@@ -54,7 +54,9 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     private var status: Status = .suspended
 
+    #if os(iOS)
     private var backgroundTask: UIBackgroundTaskIdentifier = UIBackgroundTaskIdentifier.invalid
+    #endif
 
     init(
         configuration: WebAppConfiguration, assetBundle: AssetBundle, baseURL: URL,
@@ -102,9 +104,11 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
             _ = networkReachabilityManager?.startMonitoring()
         }
 
+        #if os(iOS)
         NotificationCenter.default.addObserver(
             self, selector: #selector(AssetBundleDownloader.applicationWillEnterForeground),
             name: UIApplication.willEnterForegroundNotification, object: nil)
+        #endif
     }
 
     deinit {
@@ -113,6 +117,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     func resume() {
         queue.async {
+            #if os(iOS)
             if self.backgroundTask == UIBackgroundTaskIdentifier.invalid {
                 NSLog("Start downloading assets from bundle with version: \(self.assetBundle.version)")
 
@@ -125,6 +130,9 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                     self.endBackgroundTask()
                 }
             }
+            #else
+            NSLog("Start downloading assets from bundle with version: \(self.assetBundle.version)")
+            #endif
 
             self.status = .running
 
@@ -193,11 +201,13 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
     }
 
     private func endBackgroundTask() {
+        #if os(iOS)
         let application = UIApplication.shared
         if backgroundTask != UIBackgroundTaskIdentifier.invalid {
             application.endBackgroundTask(backgroundTask)
             self.backgroundTask = UIBackgroundTaskIdentifier.invalid
         }
+        #endif
     }
 
     func cancel() {
@@ -237,11 +247,13 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     // MARK: Application State Notifications
 
+    #if os(iOS)
     @objc func applicationWillEnterForeground() {
         if status == .suspended {
             resume()
         }
     }
+    #endif
 
     // MARK: NetworkReachabilityManagerDelegate
 

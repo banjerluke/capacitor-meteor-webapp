@@ -281,10 +281,15 @@ public protocol CapacitorBridge: AnyObject {
     private func startStartupTimer() {
         DispatchQueue.main.async {
             // Don't start the startup timer if the app started up in the background
+            #if os(iOS)
             if UIApplication.shared.applicationState == .active {
                 self.logger.info("App startup timer started")
                 self.startupTimer?.start(withTimeInterval: self.startupTimeoutInterval)
             }
+            #else
+            self.logger.info("App startup timer started")
+            self.startupTimer?.start(withTimeInterval: self.startupTimeoutInterval)
+            #endif
         }
     }
 
