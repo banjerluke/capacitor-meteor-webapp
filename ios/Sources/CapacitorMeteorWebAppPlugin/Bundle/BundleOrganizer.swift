@@ -83,9 +83,7 @@ public class BundleOrganizer {
             try fileManager.removeItem(at: targetURL)
         }
 
-        if asset.urlPath == "/" || asset.urlPath == "/index.html"
-
-            || sourceURL.lastPathComponent == "index.html" {
+        if asset.urlPath == "/" || asset.urlPath == "/index.html" {
             // Special handling for index.html - inject WebAppLocalServer shim
             try organizeIndexHtml(sourceURL: sourceURL, targetURL: targetURL)
         } else {
