@@ -154,7 +154,7 @@ public class BundleOrganizer {
                         },
 
                         onNewVersionReady(callback) {
-                            P.addListener('updateAvailable', callback);
+                            P.addListener('updateAvailable', (event) => callback(event.version));
                         },
 
                         switchToPendingVersion(callback, errorCallback) {
