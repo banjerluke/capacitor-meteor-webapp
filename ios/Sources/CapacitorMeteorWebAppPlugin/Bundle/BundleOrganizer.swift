@@ -130,45 +130,56 @@ public class BundleOrganizer {
                     setupWebAppLocalServer();
                 } else {
                     document.addEventListener('deviceready', function() {
+                        // Re-check: Cordova's own plugin may have set this up already
+                        if (window.WebAppLocalServer) return;
                         setupWebAppLocalServer();
                     });
                 }
 
                 function setupWebAppLocalServer() {
-                    const P = ((window.Capacitor || {}).Plugins || {}).CapacitorMeteorWebApp;
-                    if (!P) {
-                        throw new Error('WebAppLocalServer shim: CapacitorMeteorWebApp plugin not available');
+                    // Resolve plugin lazily — the Capacitor bridge may not have
+                    // registered plugins yet when the shim first initializes
+                    var _P;
+                    function getPlugin() {
+                        if (!_P) _P = ((window.Capacitor || {}).Plugins || {}).CapacitorMeteorWebApp;
+                        if (!_P) console.warn('WebAppLocalServer shim: CapacitorMeteorWebApp plugin not available');
+                        return _P;
                     }
 
                     window.WebAppLocalServer = {
                         startupDidComplete(callback) {
+                            var P = getPlugin(); if (!P) return;
                             P.startupDidComplete()
-                            .then(() => { if (callback) callback(); })
-                            .catch((error) => { console.error('WebAppLocalServer.startupDidComplete() failed:', error); });
+                            .then(function() { if (callback) callback(); })
+                            .catch(function(error) { console.error('WebAppLocalServer.startupDidComplete() failed:', error); });
                         },
 
                         checkForUpdates(callback) {
+                            var P = getPlugin(); if (!P) return;
                             P.checkForUpdates()
-                            .then(() => { if (callback) callback(); })
-                            .catch((error) => { console.error('WebAppLocalServer.checkForUpdates() failed:', error); });
+                            .then(function() { if (callback) callback(); })
+                            .catch(function(error) { console.error('WebAppLocalServer.checkForUpdates() failed:', error); });
                         },
 
                         onNewVersionReady(callback) {
-                            P.addListener('updateAvailable', (event) => callback(event.version));
+                            var P = getPlugin(); if (!P) return;
+                            P.addListener('updateAvailable', function(event) { callback(event.version); });
                         },
 
                         switchToPendingVersion(callback, errorCallback) {
+                            var P = getPlugin(); if (!P) return;
                             P.reload()
-                            .then(() => { if (callback) callback(); })
-                            .catch((error) => {
+                            .then(function() { if (callback) callback(); })
+                            .catch(function(error) {
                                 console.error('switchToPendingVersion failed:', error);
                                 if (typeof errorCallback === 'function') errorCallback(error);
                             });
                         },
 
                         onError(callback) {
-                            P.addListener('error', (event) => {
-                                const error = new Error(event.message || 'Unknown CapacitorMeteorWebApp error');
+                            var P = getPlugin(); if (!P) return;
+                            P.addListener('error', function(event) {
+                                var error = new Error(event.message || 'Unknown CapacitorMeteorWebApp error');
                                 callback(error);
                             });
                         },
