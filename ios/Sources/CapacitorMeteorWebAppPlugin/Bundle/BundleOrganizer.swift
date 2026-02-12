@@ -16,6 +16,15 @@ public class BundleOrganizer {
     ///   - targetDirectory: The directory where files should be organized
     /// - Throws: WebAppError if organization fails
     static func organizeBundle(_ bundle: AssetBundle, in targetDirectory: URL) throws {
+        // Validate bundle before any file operations to prevent path traversal
+        // and duplicate URL attacks from malicious manifests
+        let validationErrors = validateBundleOrganization(bundle)
+        if !validationErrors.isEmpty {
+            throw WebAppError.unsuitableAssetBundle(
+                reason: "Bundle validation failed: \(validationErrors.joined(separator: "; "))",
+                underlyingError: nil)
+        }
+
         let fileManager = FileManager.default
 
         // Create target directory if it doesn't exist
