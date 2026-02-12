@@ -7,6 +7,11 @@ export interface CapacitorMeteorWebAppPlugin {
   startupDidComplete(): Promise<void>;
 
   /**
+   * Check for available updates from the Meteor server
+   */
+  checkForUpdates(): Promise<void>;
+
+  /**
    * Get the current version of the app
    */
   getCurrentVersion(): Promise<{ version: string }>;
@@ -30,11 +35,11 @@ export interface CapacitorMeteorWebAppPlugin {
   ): Promise<PluginListenerHandle>;
 
   /**
-   * Listen for update complete events
+   * Listen for error events (download failures, etc.)
    */
   addListener(
-    eventName: 'updateComplete',
-    listenerFunc: (event: UpdateCompleteEvent) => void,
+    eventName: 'error',
+    listenerFunc: (event: WebAppErrorEvent) => void,
   ): Promise<PluginListenerHandle>;
 
   /**
@@ -47,9 +52,8 @@ export interface UpdateAvailableEvent {
   version: string;
 }
 
-export interface UpdateCompleteEvent {
-  version: string;
-  isReady: boolean;
+export interface WebAppErrorEvent {
+  message: string;
 }
 
 export enum MeteorWebAppError {
@@ -63,9 +67,12 @@ export enum MeteorWebAppError {
 declare global {
   interface Window {
     WebAppLocalServer: {
+      startupDidComplete(callback?: () => void): void;
+      checkForUpdates(callback?: () => void): void;
       onNewVersionReady(callback: (event: UpdateAvailableEvent) => void): void;
-      getNewCordovaVersion(): Promise<string | null>;
-      switchToPendingVersion(): Promise<void>;
+      switchToPendingVersion(callback?: () => void, errorCallback?: (error: Error) => void): void;
+      onError(callback: (error: Error) => void): void;
+      localFileSystemUrl(fileUrl: string): never;
     };
   }
 }

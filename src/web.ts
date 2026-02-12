@@ -7,6 +7,10 @@ export class CapacitorMeteorWebAppWeb extends WebPlugin implements CapacitorMete
     console.warn('CapacitorMeteorWebApp.startupDidComplete() is not available on web platform');
   }
 
+  async checkForUpdates(): Promise<void> {
+    console.warn('CapacitorMeteorWebApp.checkForUpdates() is not available on web platform');
+  }
+
   async getCurrentVersion(): Promise<{ version: string }> {
     console.warn('CapacitorMeteorWebApp.getCurrentVersion() is not available on web platform');
     return { version: '1.0.0' };
