@@ -27,15 +27,16 @@ protocol NetworkReachabilityManagerDelegate: AnyObject {
 final class NetworkReachabilityManager {
     private let monitor: NWPathMonitor
     private let queue: DispatchQueue
-    private let hostName: String
-
     weak var delegate: NetworkReachabilityManagerDelegate?
     var delegateQueue: DispatchQueue?
 
     private(set) var reachabilityStatus: NetworkReachabilityStatus = .unknown
 
-    init(hostName: String) {
-        self.hostName = hostName
+    // Cordova used SCNetworkReachability which supported host-specific
+    // monitoring. NWPathMonitor (iOS 12+) is Apple's modern replacement
+    // but only monitors general connectivity, not per-host reachability.
+    // The practical difference is minimal for our use case (retry gating).
+    init() {
         self.queue = DispatchQueue(label: "com.meteor.webapp.NetworkReachabilityManager")
         self.monitor = NWPathMonitor()
     }

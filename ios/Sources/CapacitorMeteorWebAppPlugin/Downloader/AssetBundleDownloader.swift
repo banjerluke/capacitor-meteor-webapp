@@ -90,7 +90,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         }
 
         if #available(macOS 10.14, iOS 12.0, *) {
-            networkReachabilityManager = NetworkReachabilityManager(hostName: baseURL.host!)
+            networkReachabilityManager = NetworkReachabilityManager()
             networkReachabilityManager?.delegate = self
             networkReachabilityManager?.delegateQueue = queue
             _ = networkReachabilityManager?.startMonitoring()
