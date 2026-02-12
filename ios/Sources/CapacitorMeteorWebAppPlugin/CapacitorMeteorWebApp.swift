@@ -598,12 +598,18 @@ public protocol CapacitorBridge: AnyObject {
         // Don't download blacklisted versions
         if configuration.blacklistedVersions.contains(manifest.version) {
             logger.info("Skipping blacklisted version: \(manifest.version)")
+            notifyUpdateFailed(error: WebAppError.unsuitableAssetBundle(
+                reason: "Skipping downloading blacklisted version",
+                underlyingError: nil))
             return false
         }
 
         // Don't download versions potentially incompatible with the bundled native code
         if manifest.cordovaCompatibilityVersion != configuration.cordovaCompatibilityVersion {
             logger.info("Skipping incompatible version: \(manifest.version)")
+            notifyUpdateFailed(error: WebAppError.unsuitableAssetBundle(
+                reason: "Skipping downloading new version because the Cordova platform version or plugin versions have changed and are potentially incompatible",
+                underlyingError: nil))
             return false
         }
 
