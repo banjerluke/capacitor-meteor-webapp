@@ -116,6 +116,20 @@ public protocol CapacitorBridge: AnyObject {
 
         // Setup startup timer
         setupStartupTimer()
+
+        // Register for background notification so we can stop the startup timer
+        // when the app is backgrounded (prevents spurious timeouts that would
+        // blacklist good versions). Mirrors Cordova's WebAppLocalServer.swift:120.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onApplicationDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func selectCurrentAssetBundle(initialAssetBundle: AssetBundle) {
@@ -499,6 +513,18 @@ public protocol CapacitorBridge: AnyObject {
     }
 
     private func forceReload() {
+        // Swap pending bundle to current before reload.
+        // In Cordova, the framework called onReset() before each reload which
+        // performed this swap. Capacitor has no equivalent hook, so we do it
+        // explicitly here.
+        if let pending = pendingAssetBundle {
+            currentAssetBundle = pending
+            pendingAssetBundle = nil
+        }
+
+        // Re-organize and set server base path for the (possibly new) current bundle
+        setupCurrentBundle()
+
         guard let bridge = capacitorBridge else {
             logger.error("Could not get Capacitor bridge for force reload")
             return
@@ -529,7 +555,7 @@ public protocol CapacitorBridge: AnyObject {
         }
     }
 
-    public func onApplicationDidEnterBackground() {
+    @objc public func onApplicationDidEnterBackground() {
         // Stop startup timer when going into the background, to avoid
         // blacklisting a version just because the web view has been suspended
         startupTimer?.stop()
