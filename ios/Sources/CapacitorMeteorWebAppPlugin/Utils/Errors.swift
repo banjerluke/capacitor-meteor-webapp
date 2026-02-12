@@ -6,7 +6,7 @@
 
 import Foundation
 
-enum WebAppError: Error, CustomStringConvertible {
+enum WebAppError: Error, CustomStringConvertible, LocalizedError {
     case invalidAssetManifest(reason: String, underlyingError: Error?)
     case fileSystemFailure(reason: String, underlyingError: Error?)
     case fileSystemError(reason: String, underlyingError: Error?)
@@ -26,6 +26,10 @@ enum WebAppError: Error, CustomStringConvertible {
         case .unsuitableAssetBundle(let reason, let underlyingError):
             return errorMessageWithReason(reason, underlyingError: underlyingError)
         }
+    }
+
+    var errorDescription: String? {
+        return description
     }
 }
 
