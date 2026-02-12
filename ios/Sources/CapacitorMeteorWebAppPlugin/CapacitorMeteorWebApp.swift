@@ -268,10 +268,32 @@ public protocol CapacitorBridge: AnyObject {
             // Set Capacitor's server base path to serve from organized bundle
             setServerBasePath(bundleServingDirectory)
 
+            // Clean up old serving directories to prevent disk space leak.
+            // Only the current version's directory is needed.
+            cleanupOldServingDirectories(keeping: currentAssetBundle.version)
+
         } catch let webAppError as WebAppError {
             logger.error("Could not setup current bundle (WebAppError): \(webAppError.description)")
         } catch {
             logger.error("Could not setup current bundle: \(error.localizedDescription)")
+        }
+    }
+
+    private func cleanupOldServingDirectories(keeping currentVersion: String) {
+        let fileManager = FileManager.default
+        guard let contents = try? fileManager.contentsOfDirectory(
+            at: servingDirectoryURL, includingPropertiesForKeys: nil) else { return }
+
+        for item in contents {
+            if item.lastPathComponent != currentVersion {
+                do {
+                    try fileManager.removeItem(at: item)
+                } catch {
+                    logger.warning(
+                        "Could not remove old serving directory \(item.lastPathComponent): \(error.localizedDescription)"
+                    )
+                }
+            }
         }
     }
 
