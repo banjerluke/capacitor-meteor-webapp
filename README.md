@@ -4,7 +4,9 @@ A Capacitor plugin that brings hot code push functionality to Meteor apps, allow
 
 Works with existing Meteor Cordova apps by shimming the `window.WebAppLocalServer` API that `cordova-plugin-meteor-webapp` provides and Meteor assumes is present.
 
-# WARNING 🚨 This is a brand new, work-in-progress plugin! Don't use it for anything without extensively testing it. I will remove this notice when I've had a chance to test it more thoroughly.
+# WARNING 🚨 Work in progress. No tests have been written yet. No Android support yet. Not tested in production. Use at your own risk.
+
+I've had both Opus 4.6 and Codex 5.3 do multiple in-depth parity audits against `cordova-plugin-meteor-webapp` to ensure that the new iOS code (which is the "hard part" compared to Android) behaves correctly. I'm almost ready to start testing it in the beta version of my app and start working on the Android version. But yeah... you have been warned!
 
 ## Features
 
