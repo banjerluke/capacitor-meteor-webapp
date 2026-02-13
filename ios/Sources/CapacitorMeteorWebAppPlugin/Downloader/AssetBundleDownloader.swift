@@ -8,6 +8,8 @@
 // minimal changes to adapt for Capacitor.
 //
 
+import os.log
+
 protocol AssetBundleDownloaderDelegate: AnyObject {
     func assetBundleDownloaderDidFinish(_ assetBundleDownloader: AssetBundleDownloader)
     func assetBundleDownloader(
@@ -16,6 +18,9 @@ protocol AssetBundleDownloaderDelegate: AnyObject {
 
 final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskDelegate,
                                    URLSessionDataDelegate, URLSessionDownloadDelegate, NetworkReachabilityManagerDelegate {
+    private let logger = os.Logger(
+        subsystem: "com.meteor.webapp", category: "AssetBundleDownloader")
+
     private(set) var configuration: WebAppConfiguration
     private(set) var assetBundle: AssetBundle
     private(set) var baseURL: URL
@@ -210,15 +215,15 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     private func cancelAndFailWithReason(_ reason: String, underlyingError: Error? = nil) {
         let error = WebAppError.downloadFailure(reason: reason, underlyingError: underlyingError)
-        print("🚨 Download failure - Reason: \(reason)")
+        logger.error("Download failure - Reason: \(reason)")
         if let underlyingError = underlyingError {
-            print("   Underlying error: \(underlyingError)")
+            logger.error("Underlying error: \(underlyingError)")
         }
         cancelAndFailWithError(error)
     }
 
     private func cancelAndFailWithError(_ error: Error) {
-        print("🚨 Download failed with error: \(error)")
+        logger.error("Download failed with error: \(error)")
         _cancel()
         delegate?.assetBundleDownloader(self, didFailWithError: error)
     }
@@ -395,7 +400,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                 return  // Don't throw error, just skip this file
             }
 
-            print("❌ Non-success status code: \(response.statusCode)")
+            logger.error("Non-success status code: \(response.statusCode)")
             throw WebAppError.downloadFailure(
                 reason: "Non-success status code \(response.statusCode) for asset: \(asset)",
                 underlyingError: nil)
@@ -407,7 +412,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
                   let ETag = response.allHeaderFields["Etag"] as? String,
                   let actualHash = SHA1HashFromETag(ETag),
                   actualHash != expectedHash {
-            print("❌ Hash mismatch - Expected: \(expectedHash), Actual: \(actualHash)")
+            logger.error("Hash mismatch - Expected: \(expectedHash), Actual: \(actualHash)")
             throw WebAppError.downloadFailure(
                 reason: "Hash mismatch for asset: \(asset)", underlyingError: nil)
         }
