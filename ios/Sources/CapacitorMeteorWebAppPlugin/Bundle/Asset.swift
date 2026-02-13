@@ -41,10 +41,13 @@ extension Asset: CustomStringConvertible {
 }
 
 extension Asset: Hashable, Equatable {
-    var hashValue: Int { return ObjectIdentifier(bundle).hashValue ^ urlPath.hashValue }
-}
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(bundle))
+        hasher.combine(urlPath)
+    }
 
-func == (lhs: Asset, rhs: Asset) -> Bool {
-    return ObjectIdentifier(lhs.bundle) == ObjectIdentifier(rhs.bundle)
-        && lhs.urlPath == rhs.urlPath
+    static func == (lhs: Asset, rhs: Asset) -> Bool {
+        return ObjectIdentifier(lhs.bundle) == ObjectIdentifier(rhs.bundle)
+            && lhs.urlPath == rhs.urlPath
+    }
 }
