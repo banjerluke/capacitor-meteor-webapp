@@ -24,7 +24,6 @@ final class WebAppConfiguration {
                 }
 
                 userDefaults.set(newValue, forKey: "MeteorWebAppId")
-                userDefaults.synchronize()
             }
         }
     }
@@ -42,7 +41,6 @@ final class WebAppConfiguration {
                 }
 
                 userDefaults.set(newValue, forKey: "MeteorWebAppRootURL")
-                userDefaults.synchronize()
             }
         }
     }
@@ -60,7 +58,6 @@ final class WebAppConfiguration {
                 } else {
                     userDefaults.set(newValue, forKey: "MeteorWebAppCordovaCompatibilityVersion")
                 }
-                userDefaults.synchronize()
             }
         }
     }
@@ -78,7 +75,6 @@ final class WebAppConfiguration {
                 } else {
                     userDefaults.set(newValue, forKey: "MeteorWebAppLastSeenInitialVersion")
                 }
-                userDefaults.synchronize()
             }
         }
     }
@@ -96,7 +92,6 @@ final class WebAppConfiguration {
                 } else {
                     userDefaults.set(newValue, forKey: "MeteorWebAppLastDownloadedVersion")
                 }
-                userDefaults.synchronize()
             }
         }
     }
@@ -115,7 +110,6 @@ final class WebAppConfiguration {
                 } else {
                     userDefaults.set(newValue, forKey: "MeteorWebAppLastKnownGoodVersion")
                 }
-                userDefaults.synchronize()
             }
         }
     }
@@ -137,7 +131,6 @@ final class WebAppConfiguration {
                 } else {
                     userDefaults.set(newValue, forKey: "MeteorWebAppBlacklistedVersions")
                 }
-                userDefaults.synchronize()
             }
         }
     }
@@ -156,7 +149,6 @@ final class WebAppConfiguration {
                 } else {
                     userDefaults.set(newValue, forKey: "MeteorWebAppVersionsToRetry")
                 }
-                userDefaults.synchronize()
             }
         }
     }
