@@ -6,9 +6,13 @@
 //
 
 import Foundation
+import os.log
 
 /// Handles file organization logic for bundles, including URL path mapping and directory structure creation
 public class BundleOrganizer {
+
+    private static let logger = os.Logger(
+        subsystem: "com.meteor.webapp", category: "BundleOrganizer")
 
     /// Organizes files in a bundle directory according to their URL mappings
     /// - Parameters:
@@ -72,8 +76,7 @@ public class BundleOrganizer {
                 // Skip missing source maps - they may not be served in production
                 return
             }
-            print(
-                "❌ Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
+            logger.error("Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
             throw WebAppError.fileSystemError(
                 reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
         }
