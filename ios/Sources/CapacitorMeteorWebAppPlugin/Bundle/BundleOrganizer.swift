@@ -229,34 +229,6 @@ public class BundleOrganizer {
         return targetDirectory.appendingPathComponent(relativePath)
     }
 
-    /// Creates the directory structure needed for a bundle's URL mappings
-    /// - Parameters:
-    ///   - bundle: The bundle to analyze
-    ///   - targetDirectory: The target directory
-    /// - Throws: WebAppError if directory creation fails
-    static func createDirectoryStructure(for bundle: AssetBundle, in targetDirectory: URL) throws {
-        let fileManager = FileManager.default
-
-        // Create the target directory itself
-        try fileManager.createDirectory(
-            at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
-
-        // Get all unique directory paths from assets
-        let directoryPaths = Set(
-            bundle.ownAssets.compactMap { asset -> String? in
-                let targetURL = targetURLForAsset(asset, in: targetDirectory)
-                let directoryURL = targetURL.deletingLastPathComponent()
-                return directoryURL.path
-            })
-
-        // Create all required directories
-        for directoryPath in directoryPaths {
-            let directoryURL = URL(fileURLWithPath: directoryPath)
-            try fileManager.createDirectory(
-                at: directoryURL, withIntermediateDirectories: true, attributes: nil)
-        }
-    }
-
     /// Validates that all assets in a bundle can be properly organized
     /// - Parameter bundle: The bundle to validate
     /// - Returns: Array of validation errors (empty if valid)
