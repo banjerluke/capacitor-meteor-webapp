@@ -69,7 +69,7 @@ declare global {
     WebAppLocalServer: {
       startupDidComplete(callback?: () => void): void;
       checkForUpdates(callback?: () => void): void;
-      onNewVersionReady(callback: (event: UpdateAvailableEvent) => void): void;
+      onNewVersionReady(callback: (version: string) => void): void;
       switchToPendingVersion(callback?: () => void, errorCallback?: (error: Error) => void): void;
       onError(callback: (error: Error) => void): void;
       localFileSystemUrl(fileUrl: string): never;
