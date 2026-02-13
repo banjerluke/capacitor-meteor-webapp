@@ -67,11 +67,6 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         queue = DispatchQueue(label: "com.meteor.webapp.AssetBundleDownloader", attributes: [])
 
         retryStrategy = RetryStrategy()
-        retryStrategy.minimumTimeInterval = 0.1
-        retryStrategy.numberOfAttemptsAtMinimumTimeInterval = 2
-        retryStrategy.baseTimeInterval = 1
-        retryStrategy.exponent = 2.2
-        retryStrategy.randomizationFactor = 0.5
 
         super.init()
 

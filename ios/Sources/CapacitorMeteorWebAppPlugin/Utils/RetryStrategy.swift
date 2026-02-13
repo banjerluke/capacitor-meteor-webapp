@@ -1,34 +1,34 @@
 //
 // RetryStrategy.swift
 //
-// Implements exponential backoff retry logic for network operations
-// with configurable timing and randomization.
+// Implements triangular backoff retry logic for network operations.
+// After one quick retry (0.1s), intervals follow 1 + n*(n+1)/2
+// giving: 0.1, 1, 2, 4, 7, 11, 16, 22, 30, 30, 30...
 //
-// This file is ported from METRetryStrategy.m in cordova-plugin-meteor-webapp,
-// translated from Objective-C to Swift for Capacitor.
+// Originally ported from METRetryStrategy.m in cordova-plugin-meteor-webapp.
+// Simplified from exponential to triangular backoff for more predictable
+// retry cadence while keeping a 30s ceiling.
 //
 
 import Foundation
 
 final class RetryStrategy {
-    var minimumTimeInterval: TimeInterval = 0.1
+    /// Interval for the first retry (transient failure recovery)
+    var quickRetryInterval: TimeInterval = 0.1
+
+    /// Maximum retry interval ceiling
     var maximumTimeInterval: TimeInterval = 30.0
-    var numberOfAttemptsAtMinimumTimeInterval: UInt = 2
-    var baseTimeInterval: TimeInterval = 1.0
-    var exponent: Double = 2.2
-    var randomizationFactor: Double = 0.5
 
     func retryIntervalForNumber(ofAttempts numberOfAttempts: UInt) -> TimeInterval {
-        if numberOfAttempts < numberOfAttemptsAtMinimumTimeInterval {
-            return minimumTimeInterval
+        // First attempt: quick retry for transient failures
+        if numberOfAttempts == 0 {
+            return quickRetryInterval
         }
 
-        let interval =
-            baseTimeInterval
-            * pow(exponent, Double(numberOfAttempts - numberOfAttemptsAtMinimumTimeInterval))
-        let randomizedInterval =
-            interval * (1.0 + randomizationFactor * (Double.random(in: 0...1) * 2.0 - 1.0))
+        // Subsequent attempts: triangular backoff 1 + n*(n+1)/2
+        let n = Double(numberOfAttempts - 1)
+        let interval = 1.0 + n * (n + 1.0) / 2.0
 
-        return min(max(randomizedInterval, minimumTimeInterval), maximumTimeInterval)
+        return min(interval, maximumTimeInterval)
     }
 }
