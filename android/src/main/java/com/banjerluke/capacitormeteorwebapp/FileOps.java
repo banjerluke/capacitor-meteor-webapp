@@ -63,7 +63,7 @@ final class FileOps {
         if (from.isDirectory()) {
             copyDirectory(from, to);
         } else {
-            copy(from, to);
+            copyFileWithoutRename(from, to);
         }
 
         if (!deleteRecursively(from)) {
@@ -135,6 +135,18 @@ final class FileOps {
             } else {
                 copy(child, childTarget);
             }
+        }
+    }
+
+    private static void copyFileWithoutRename(File from, File to) throws IOException {
+        ensureParentDirectory(to);
+        try (InputStream inputStream = new FileInputStream(from); OutputStream output = new FileOutputStream(to)) {
+            byte[] buffer = new byte[COPY_BUFFER_SIZE];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            output.flush();
         }
     }
 }
