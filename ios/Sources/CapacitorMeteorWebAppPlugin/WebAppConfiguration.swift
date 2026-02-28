@@ -18,12 +18,15 @@ final class WebAppConfiguration {
         }
         set {
             let oldValue = appId
-            if newValue != oldValue && newValue != nil {
+            if newValue != oldValue {
                 if oldValue != nil {
-                    NSLog("appId seems to have changed, new: \(newValue!), old: \(oldValue!)")
+                    NSLog("appId seems to have changed, new: \(String(describing: newValue)), old: \(oldValue!)")
                 }
-
-                userDefaults.set(newValue, forKey: "MeteorWebAppId")
+                if let newValue {
+                    userDefaults.set(newValue, forKey: "MeteorWebAppId")
+                } else {
+                    userDefaults.removeObject(forKey: "MeteorWebAppId")
+                }
             }
         }
     }
@@ -35,12 +38,15 @@ final class WebAppConfiguration {
         }
         set {
             let oldValue = rootURL
-            if newValue != oldValue && newValue != nil {
+            if newValue != oldValue {
                 if oldValue != nil {
-                    NSLog("ROOT_URL seems to have changed, new: \(newValue!), old: \(oldValue!)")
+                    NSLog("ROOT_URL seems to have changed, new: \(String(describing: newValue)), old: \(oldValue!)")
                 }
-
-                userDefaults.set(newValue, forKey: "MeteorWebAppRootURL")
+                if let newValue {
+                    userDefaults.set(newValue, forKey: "MeteorWebAppRootURL")
+                } else {
+                    userDefaults.removeObject(forKey: "MeteorWebAppRootURL")
+                }
             }
         }
     }
@@ -175,6 +181,8 @@ final class WebAppConfiguration {
     }
 
     func reset() {
+        appId = nil
+        rootURL = nil
         cordovaCompatibilityVersion = nil
         lastSeenInitialVersion = nil
         lastDownloadedVersion = nil
