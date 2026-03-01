@@ -47,7 +47,7 @@ public class BundleOrganizerTest {
 
         assertTrue(organizedIndex.exists());
         assertTrue(organizedJs.exists());
-        String organizedIndexContent = java.nio.file.Files.readString(organizedIndex.toPath());
+        String organizedIndexContent = new String(java.nio.file.Files.readAllBytes(organizedIndex.toPath()), StandardCharsets.UTF_8);
         assertTrue(organizedIndexContent.contains("window.WebAppLocalServer"));
     }
 

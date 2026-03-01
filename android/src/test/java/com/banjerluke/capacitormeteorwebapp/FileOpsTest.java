@@ -27,7 +27,7 @@ public class FileOpsTest {
         FileOps.copy(new ByteArrayInputStream(payload), target);
 
         assertTrue(target.exists());
-        assertEquals("hello-world", java.nio.file.Files.readString(target.toPath()));
+        assertEquals("hello-world", new String(java.nio.file.Files.readAllBytes(target.toPath()), StandardCharsets.UTF_8));
     }
 
     @Test
