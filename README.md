@@ -4,9 +4,7 @@ A Capacitor plugin that brings hot code push functionality to Meteor apps, allow
 
 Works with existing Meteor Cordova apps by shimming the `window.WebAppLocalServer` API that `cordova-plugin-meteor-webapp` provides and Meteor assumes is present.
 
-# WARNING 🚨 Work in progress. No tests have been written yet. No Android support yet. Not tested in production. Use at your own risk.
-
-I've had both Opus 4.6 and Codex 5.3 do multiple in-depth parity audits against `cordova-plugin-meteor-webapp` to ensure that the new iOS code (which is the "hard part" compared to Android) behaves correctly. I'm almost ready to start testing it in the beta version of my app and start working on the Android version. But yeah... you have been warned!
+# WARNING 🚨 Work in progress. Not tested in production. Use at your own risk.
 
 ## Features
 
@@ -16,7 +14,7 @@ This plugin inherits the nifty functionality of [Meteor's `cordova-plugin-meteor
 - 🔄 **Automatic Updates**: Downloads and applies updates seamlessly in the background
 - 🛡️ **Rollback Protection**: Automatically reverts to the last known good version if updates fail
 - 📱 **iOS Support**: Full native implementation with robust error handling
-- 📱 ~~**Android Support**~~: MISSING. Totally doable, just haven't gotten around to it yet.
+- 📱 **Android Support**: Full native implementation mirroring the iOS feature set
 
 ## Installation
 
@@ -33,7 +31,7 @@ meteor npm i -D @capacitor/cli
 
 # Install iOS and/or Android platforms for Capacitor
 meteor npm i @capacitor/ios
-meteor npm i @capacitor/android   # Note, this plugin does not support Android yet!
+meteor npm i @capacitor/android
 
 # Install Capacitor plugin
 meteor npm install @banjerluke/capacitor-meteor-webapp
@@ -71,7 +69,7 @@ Now we can create the native Xcode and/or Android projects:
 
 ```bash
 npx cap add ios
-npx cap add android  # again, this plugin doesn't yet support Android
+npx cap add android
 ```
 
 Ignore the warning that says `sync could not run--missing capacitor/www-dist directory.` That will be completed as part of the build script.
@@ -115,6 +113,33 @@ The plugin automatically handles failures:
 1. **Startup Timeout**: If `startupDidComplete()` isn't called within the timeout period, the app reverts to the last known good version
 2. **Crash Detection**: Cold start crashes are detected and trigger automatic rollback
 3. **Version Blacklisting**: Failed versions are blacklisted to prevent retry loops
+
+## Running Tests
+
+### iOS
+
+The iOS tests use Swift Package Manager and run on the iOS Simulator via `xcodebuild`. They cover unit tests for all core components and integration tests using a `MockURLProtocol`-based network layer.
+
+```bash
+xcodebuild test \
+  -scheme CapacitorMeteorWebApp \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -only-testing:CapacitorMeteorWebAppPluginTests
+```
+
+If that simulator isn't available, list yours with `xcrun simctl list devices available | grep iPhone` and substitute the name.
+
+### Android
+
+Android has both local unit tests (JVM) and instrumented tests (require emulator/device). They use JUnit 4 and OkHttp's `MockWebServer`.
+
+```bash
+# Unit tests (JVM — no emulator needed)
+cd android && ./gradlew test
+
+# Instrumented tests (requires a running emulator or connected device)
+cd android && ./gradlew connectedAndroidTest
+```
 
 ## License & Acknowledgments
 
