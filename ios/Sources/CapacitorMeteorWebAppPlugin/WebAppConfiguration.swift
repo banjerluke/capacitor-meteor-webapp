@@ -9,7 +9,11 @@
 //
 
 final class WebAppConfiguration {
-    let userDefaults = UserDefaults.standard
+    let userDefaults: UserDefaults
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+    }
 
     /// The appId as defined in the runtime config
     var appId: String? {
@@ -110,7 +114,6 @@ final class WebAppConfiguration {
 
         set {
             if newValue != lastKnownGoodVersion {
-                let userDefaults = UserDefaults.standard
                 if newValue == nil {
                     userDefaults.removeObject(forKey: "MeteorWebAppLastKnownGoodVersion")
                 } else {

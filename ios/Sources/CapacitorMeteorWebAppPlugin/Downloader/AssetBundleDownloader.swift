@@ -57,7 +57,7 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
     init(
         configuration: WebAppConfiguration, assetBundle: AssetBundle, baseURL: URL,
-        missingAssets: Set<Asset>
+        missingAssets: Set<Asset>, sessionConfiguration: URLSessionConfiguration = .default
     ) {
         self.configuration = configuration
         self.assetBundle = assetBundle
@@ -70,7 +70,6 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
 
         super.init()
 
-        let sessionConfiguration = URLSessionConfiguration.default
         sessionConfiguration.httpMaximumConnectionsPerHost = 6
 
         // Disable the protocol-level local cache, because we make sure to only
