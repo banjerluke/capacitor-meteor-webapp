@@ -135,4 +135,65 @@ final class AssetBundleTests: XCTestCase {
         XCTAssertEqual(config?.rootURL, URL(string: "http://example.com"))
         XCTAssertEqual(config?.autoupdateVersionCordova, "v-rc")
     }
+
+    func testMissingRuntimeConfigScriptThrowsUnsuitableAssetBundle() throws {
+        let indexURL = tempDir.appendingPathComponent("index-without-config.html")
+        try "<html><head></head><body>no runtime config</body></html>".write(
+            to: indexURL,
+            atomically: true,
+            encoding: .utf8)
+
+        XCTAssertThrowsError(try loadRuntimeConfigFromIndexFileAtURL(indexURL)) { error in
+            guard case .unsuitableAssetBundle(let reason, _) = error as? WebAppError else {
+                XCTFail("Expected WebAppError.unsuitableAssetBundle, got \(error)")
+                return
+            }
+
+            XCTAssertTrue(
+                reason.contains("Couldn't load runtime config from index file"),
+                "Unexpected failure reason: \(reason)")
+        }
+    }
+
+    func testManifestURLPathWithQueryStringIsNormalizedAtBundleLevel() throws {
+        let bundleDir = tempDir.appendingPathComponent("bundle-with-query-url")
+        let assetDir = bundleDir.appendingPathComponent("app")
+        try FileManager.default.createDirectory(at: assetDir, withIntermediateDirectories: true)
+
+        let manifest = """
+        {
+            "version": "v-query",
+            "cordovaCompatibilityVersions": {"ios": "ios-1"},
+            "manifest": [
+                {
+                    "where": "client",
+                    "path": "app/main.js",
+                    "url": "/app/main.js?meteor_dont_serve_index=true",
+                    "type": "js",
+                    "cacheable": true,
+                    "hash": "0123456789012345678901234567890123456789"
+                }
+            ]
+        }
+        """
+
+        try manifest.write(
+            to: bundleDir.appendingPathComponent("program.json"),
+            atomically: true,
+            encoding: .utf8)
+        try "<html></html>".write(
+            to: bundleDir.appendingPathComponent("index.html"),
+            atomically: true,
+            encoding: .utf8)
+        try "console.log('query url test');".write(
+            to: bundleDir.appendingPathComponent("app/main.js"),
+            atomically: true,
+            encoding: .utf8)
+
+        let bundle = try AssetBundle(directoryURL: bundleDir)
+        let resolved = bundle.assetForURLPath("/app/main.js")
+
+        XCTAssertNotNil(resolved)
+        XCTAssertEqual(resolved?.filePath, "app/main.js")
+    }
 }

@@ -67,8 +67,8 @@ struct AssetManifest {
             if let URLPath = entryJSON["url"] as? String,
                let filePath = entryJSON["path"] as? String,
                let fileType = entryJSON["type"] as? String,
-               let hash = entryJSON["hash"] as? String,
                let cacheable = entryJSON["cacheable"] as? Bool {
+                let hash = entryJSON["hash"] as? String
                 let sourceMapPath = entryJSON["sourceMap"] as? String
                 let sourceMapURLPath = entryJSON["sourceMapUrl"] as? String
 

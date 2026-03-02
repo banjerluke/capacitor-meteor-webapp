@@ -8,6 +8,45 @@ final class AssetManifestTests: XCTestCase {
         return json.data(using: .utf8)!
     }
 
+    private func assertInvalidManifest(
+        data: Data,
+        reasonContains expectedReasonFragment: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        do {
+            _ = try AssetManifest(data: data)
+            XCTFail("Expected invalid asset manifest error", file: file, line: line)
+        } catch let error as WebAppError {
+            guard case .invalidAssetManifest(let reason, _) = error else {
+                XCTFail("Expected .invalidAssetManifest, got \(error)", file: file, line: line)
+                return
+            }
+            if let expectedReasonFragment {
+                XCTAssertTrue(
+                    reason.contains(expectedReasonFragment),
+                    "Expected reason to contain '\(expectedReasonFragment)', got '\(reason)'",
+                    file: file,
+                    line: line)
+            }
+        } catch {
+            XCTFail("Expected WebAppError, got \(error)", file: file, line: line)
+        }
+    }
+
+    private func assertInvalidManifest(
+        json: String,
+        reasonContains expectedReasonFragment: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assertInvalidManifest(
+            data: manifestData(json),
+            reasonContains: expectedReasonFragment,
+            file: file,
+            line: line)
+    }
+
     // MARK: - Parsing
 
     func testParsesClientEntriesOnly() throws {
@@ -38,10 +77,7 @@ final class AssetManifestTests: XCTestCase {
             "manifest": []
         }
         """
-        XCTAssertThrowsError(try AssetManifest(data: manifestData(json))) { error in
-            XCTAssertTrue(String(describing: error).contains("version"),
-                "Error should mention 'version': \(error)")
-        }
+        assertInvalidManifest(json: json, reasonContains: "version")
     }
 
     func testThrowsOnMissingCordovaCompatibilityVersion() {
@@ -52,10 +88,25 @@ final class AssetManifestTests: XCTestCase {
             "manifest": []
         }
         """
-        XCTAssertThrowsError(try AssetManifest(data: manifestData(json))) { error in
-            XCTAssertTrue(String(describing: error).contains("cordovaCompatibilityVersion"),
-                "Error should mention 'cordovaCompatibilityVersion': \(error)")
+        assertInvalidManifest(json: json, reasonContains: "cordovaCompatibilityVersion")
+    }
+
+    func testThrowsOnIncompatibleFormat() {
+        let json = """
+        {
+            "format": "web-program-pre2",
+            "version": "v1",
+            "cordovaCompatibilityVersions": {"ios": "ios-1"},
+            "manifest": []
         }
+        """
+        assertInvalidManifest(json: json, reasonContains: "incompatible")
+    }
+
+    func testThrowsOnInvalidJSON() {
+        assertInvalidManifest(
+            data: Data("{\"version\":\"v1\"".utf8),
+            reasonContains: "Error parsing asset manifest")
     }
 
     func testParsesHashAndSourceMapFields() throws {
@@ -86,7 +137,7 @@ final class AssetManifestTests: XCTestCase {
         XCTAssertEqual(entry.sourceMapURLPath, "/app.js.map")
     }
 
-    func testParsesOptionalFieldsAsNil() throws {
+    func testParsesMissingHashAsNil() throws {
         let json = """
         {
             "version": "v1",
@@ -97,8 +148,7 @@ final class AssetManifestTests: XCTestCase {
                     "path": "app.js",
                     "url": "/app.js",
                     "type": "js",
-                    "cacheable": true,
-                    "hash": "abc123"
+                    "cacheable": true
                 }
             ]
         }
@@ -107,7 +157,7 @@ final class AssetManifestTests: XCTestCase {
 
         XCTAssertEqual(manifest.entries.count, 1)
         let entry = manifest.entries[0]
-        XCTAssertEqual(entry.hash, "abc123")
+        XCTAssertNil(entry.hash)
         XCTAssertNil(entry.sourceMapPath)
         XCTAssertNil(entry.sourceMapURLPath)
     }
