@@ -33,6 +33,50 @@ public class AssetManifestTest {
             + "\"manifest\":[]"
             + "}";
 
+        assertInvalidManifest(manifestJson);
+    }
+
+    @Test
+    public void throwsOnIncompatibleFormat() {
+        String manifestJson = "{"
+            + "\"format\":\"web-program-pre2\","
+            + "\"version\":\"v1\","
+            + "\"cordovaCompatibilityVersions\":{\"android\":\"android-1\"},"
+            + "\"manifest\":[]"
+            + "}";
+
+        assertInvalidManifest(manifestJson);
+    }
+
+    @Test
+    public void throwsOnMissingCompatibilityObject() {
+        String manifestJson = "{"
+            + "\"version\":\"v1\","
+            + "\"manifest\":[]"
+            + "}";
+
+        assertInvalidManifest(manifestJson);
+    }
+
+    @Test
+    public void throwsOnMissingAndroidCompatibilityVersion() {
+        String manifestJson = "{"
+            + "\"version\":\"v1\","
+            + "\"cordovaCompatibilityVersions\":{\"ios\":\"ios-1\"},"
+            + "\"manifest\":[]"
+            + "}";
+
+        assertInvalidManifest(manifestJson);
+    }
+
+    @Test
+    public void throwsOnInvalidJson() {
+        String manifestJson = "{\"version\":\"v1\"";
+
+        assertInvalidManifest(manifestJson);
+    }
+
+    private static void assertInvalidManifest(String manifestJson) {
         try {
             new AssetManifest(manifestJson);
         } catch (WebAppError error) {
@@ -40,7 +84,7 @@ public class AssetManifestTest {
             return;
         }
 
-        throw new AssertionError("Expected WebAppError for missing version");
+        throw new AssertionError("Expected WebAppError for invalid manifest");
     }
 
     @Test

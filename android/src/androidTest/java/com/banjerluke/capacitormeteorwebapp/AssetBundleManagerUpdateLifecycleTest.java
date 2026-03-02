@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import okhttp3.mockwebserver.Dispatcher;
@@ -537,6 +538,7 @@ public class AssetBundleManagerUpdateLifecycleTest {
         // Neither callback should fire — wait briefly and verify
         assertFalse("Callbacks should not be invoked when shouldDownload returns false",
             latch.await(3, TimeUnit.SECONDS));
+        assertEquals("Only manifest should be requested when download is skipped", 1, server.getRequestCount());
 
         manager.shutdown();
     }
@@ -553,6 +555,9 @@ public class AssetBundleManagerUpdateLifecycleTest {
         String indexHtml = serverBuilder.buildIndexHtml();
         String hash = serverBuilder.getAssets().get(0).hash;
 
+        AtomicInteger manifestRequests = new AtomicInteger(0);
+        AtomicInteger indexRequests = new AtomicInteger(0);
+        AtomicInteger assetRequests = new AtomicInteger(0);
         server.setDispatcher(new Dispatcher() {
             @Override
             public MockResponse dispatch(RecordedRequest request) {
@@ -560,12 +565,15 @@ public class AssetBundleManagerUpdateLifecycleTest {
                 String cleanPath = path == null ? "" : path.split("\\?")[0];
 
                 if ("/__cordova/manifest.json".equals(cleanPath)) {
+                    manifestRequests.incrementAndGet();
                     return new MockResponse().setResponseCode(200).setBody(manifestJson);
                 }
                 if ("/__cordova/".equals(cleanPath)) {
+                    indexRequests.incrementAndGet();
                     return new MockResponse().setResponseCode(200).setBody(indexHtml);
                 }
                 if ("/__cordova/app/main.js".equals(cleanPath)) {
+                    assetRequests.incrementAndGet();
                     return new MockResponse()
                         .setResponseCode(200)
                         .addHeader("ETag", "\"" + hash + "\"")
@@ -613,6 +621,9 @@ public class AssetBundleManagerUpdateLifecycleTest {
         assertNull("Unexpected error: " + failure.get(), failure.get());
         assertNotNull(downloaded.get());
         assertEquals(version, downloaded.get().getVersion());
+        assertEquals("Two update checks should fetch manifest twice", 2, manifestRequests.get());
+        assertEquals("Only one index download should occur for deduped in-flight version", 1, indexRequests.get());
+        assertEquals("Only one asset download should occur for deduped in-flight version", 1, assetRequests.get());
 
         manager.shutdown();
     }

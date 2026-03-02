@@ -12,6 +12,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -20,8 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.mockwebserver.MockWebServer;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -70,6 +71,19 @@ public class ShouldDownloadFilterTest {
         configuration.setRootUrlString(rootUrl);
         configuration.setCordovaCompatibilityVersion(compatibility);
         return configuration;
+    }
+
+    private int countDownloadedVersionDirectories() {
+        File[] entries = versionsDirectory.listFiles();
+        if (entries == null) {
+            return 0;
+        }
+
+        return (int) Arrays.stream(entries)
+            .filter(File::isDirectory)
+            .filter(file -> !"Downloading".equals(file.getName()))
+            .filter(file -> !"PartialDownload".equals(file.getName()))
+            .count();
     }
 
     @Test
@@ -122,6 +136,10 @@ public class ShouldDownloadFilterTest {
         // Neither callback should fire
         assertFalse("Should skip download for incompatible version",
             latch.await(3, TimeUnit.SECONDS));
+        assertNull("No success callback expected", downloaded.get());
+        assertNull("No error callback expected", failure.get());
+        assertEquals("Only manifest should be requested", 1, server.getRequestCount());
+        assertEquals("No downloaded versions should be written", 0, countDownloadedVersionDirectories());
 
         manager.shutdown();
     }
@@ -176,6 +194,10 @@ public class ShouldDownloadFilterTest {
 
         assertFalse("Should skip download for blacklisted version",
             latch.await(3, TimeUnit.SECONDS));
+        assertNull("No success callback expected", downloaded.get());
+        assertNull("No error callback expected", failure.get());
+        assertEquals("Only manifest should be requested", 1, server.getRequestCount());
+        assertEquals("No downloaded versions should be written", 0, countDownloadedVersionDirectories());
 
         manager.shutdown();
     }
@@ -232,6 +254,10 @@ public class ShouldDownloadFilterTest {
 
         assertFalse("Should skip download when current version matches manifest",
             latch.await(3, TimeUnit.SECONDS));
+        assertNull("No success callback expected", downloaded.get());
+        assertNull("No error callback expected", failure.get());
+        assertEquals("Only manifest should be requested", 1, server.getRequestCount());
+        assertEquals("No downloaded versions should be written", 0, countDownloadedVersionDirectories());
 
         manager.shutdown();
     }

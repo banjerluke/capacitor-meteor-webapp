@@ -13,6 +13,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class AssetBundleTest {
 
@@ -193,5 +194,57 @@ public class AssetBundleTest {
         assertEquals(appId, config.getAppId());
         assertEquals(rootUrl, config.getRootUrlString());
         assertEquals(version, config.getAutoupdateVersionCordova());
+    }
+
+    @Test
+    public void getRuntimeConfig_throwsWhenRuntimeScriptMissing() throws Exception {
+        String version = "v-runtime-missing";
+        String manifest = buildManifest(version, "android-1", new String[][] {});
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+        files.put("index.html", "<html><head></head><body></body></html>".getBytes(StandardCharsets.UTF_8));
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+
+        try {
+            bundle.getRuntimeConfig();
+        } catch (WebAppError error) {
+            assertEquals(WebAppError.Type.UNSUITABLE_ASSET_BUNDLE, error.getType());
+            return;
+        }
+
+        throw new AssertionError("Expected getRuntimeConfig to fail without runtime config script");
+    }
+
+    @Test
+    public void fromReader_normalizesManifestUrlQueryString() throws Exception {
+        String version = "v-query-normalize";
+        String compatibility = "android-1";
+        String hash = "abc123abc123abc123abc123abc123abc123abc1";
+
+        String manifest = "{"
+            + "\"version\":\"" + version + "\","
+            + "\"cordovaCompatibilityVersions\":{\"android\":\"" + compatibility + "\"},"
+            + "\"manifest\":[{"
+            + "\"where\":\"client\","
+            + "\"path\":\"app/main.js\","
+            + "\"url\":\"/app/main.js?cache_bust=123\","
+            + "\"type\":\"js\","
+            + "\"cacheable\":true,"
+            + "\"hash\":\"" + hash + "\""
+            + "}]"
+            + "}";
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+        files.put("index.html", buildIndexHtml("test-app", "http://localhost:3000", version).getBytes(StandardCharsets.UTF_8));
+        files.put("app/main.js", "console.log('query');".getBytes(StandardCharsets.UTF_8));
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+
+        assertNotNull("Asset should be addressable by normalized URL path", bundle.assetForUrlPath("/app/main.js"));
+        assertNull("Original query-string URL should not remain as key", bundle.assetForUrlPath("/app/main.js?cache_bust=123"));
+        assertTrue("Bundle should include normalized URL in own assets", bundle.getOwnAssetsByUrlPath().containsKey("/app/main.js"));
     }
 }
