@@ -123,8 +123,8 @@ The iOS tests use Swift Package Manager and run on the iOS Simulator via `xcodeb
 ```bash
 xcodebuild test \
   -scheme CapacitorMeteorWebApp \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:CapacitorMeteorWebAppPluginTests
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=26.2' \
+  -only-testing:CapacitorMeteorWebAppPluginTests -quiet
 ```
 
 If that simulator isn't available, list yours with `xcrun simctl list devices available | grep iPhone` and substitute the name.

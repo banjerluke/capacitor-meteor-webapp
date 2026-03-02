@@ -8,6 +8,7 @@
 // minimal changes to adapt for Capacitor.
 //
 
+import UIKit
 import os.log
 
 protocol AssetBundleDownloaderDelegate: AnyObject {
@@ -163,6 +164,13 @@ final class AssetBundleDownloader: NSObject, URLSessionDelegate, URLSessionTaskD
         // Remove leading / from URL path because the path should be relative to the base URL
         if urlPath.hasPrefix("/") {
             urlPath = String(asset.urlPath.dropFirst())
+        }
+
+        // For the root/index page, return the base URL directly.
+        // URLComponents(string: "") can produce unreliable results across
+        // Foundation versions when resolved relative to a base URL.
+        if urlPath.isEmpty {
+            return baseURL
         }
 
         guard var urlComponents = URLComponents(string: urlPath) else {

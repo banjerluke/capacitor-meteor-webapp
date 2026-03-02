@@ -66,6 +66,11 @@ final class MockURLProtocol: URLProtocol {
         let mockResponse: MockResponse
         if let response = Self.routes[path] {
             mockResponse = response
+        } else if !path.hasSuffix("/"), let response = Self.routes[path + "/"] {
+            // Trailing-slash fallback: Foundation URL.path may strip the
+            // trailing slash depending on the OS version, so try matching
+            // with a trailing slash appended.
+            mockResponse = response
         } else {
             mockResponse = MockResponse(statusCode: 404)
         }

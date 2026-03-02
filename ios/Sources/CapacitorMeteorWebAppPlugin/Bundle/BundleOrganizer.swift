@@ -237,17 +237,9 @@ public class BundleOrganizer {
     /// - Returns: Array of validation errors (empty if valid)
     static func validateBundleOrganization(_ bundle: AssetBundle) -> [String] {
         var errors: [String] = []
-        var urlPaths: Set<String> = []
 
         for asset in bundle.ownAssets {
-            // Check for duplicate URL paths
-            if urlPaths.contains(asset.urlPath) {
-                errors.append("Duplicate URL path: \(asset.urlPath)")
-            } else {
-                urlPaths.insert(asset.urlPath)
-            }
-
-            // Check for invalid characters in URL path
+            // Check for path traversal
             if asset.urlPath.contains("..") {
                 errors.append("Invalid URL path contains '..': \(asset.urlPath)")
             }

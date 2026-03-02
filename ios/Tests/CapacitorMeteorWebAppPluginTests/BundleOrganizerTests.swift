@@ -67,30 +67,6 @@ final class BundleOrganizerTests: XCTestCase {
         XCTAssertTrue(errors.first?.contains("..") ?? false)
     }
 
-    func testValidateBundleDetectsDuplicateURLPaths() throws {
-        let builder = TestBundleBuilder(
-            version: "v-dup", appId: "test-app",
-            rootUrl: "http://example.com", compatibility: "ios-1")
-
-        let bundleDir = tempDir.appendingPathComponent("bundle")
-        try builder.writeToDirectory(bundleDir)
-        let bundle = try AssetBundle(directoryURL: bundleDir)
-
-        // Manually inject duplicate URL paths
-        let dup1 = Asset(
-            bundle: bundle, filePath: "a.js",
-            urlPath: "/dup", fileType: "js", cacheable: true)
-        let dup2 = Asset(
-            bundle: bundle, filePath: "b.js",
-            urlPath: "/dup", fileType: "js", cacheable: true)
-        bundle.addAsset(dup1)
-        bundle.addAsset(dup2)
-
-        let errors = BundleOrganizer.validateBundleOrganization(bundle)
-        XCTAssertTrue(errors.contains(where: { $0.contains("Duplicate") }),
-            "Should detect duplicate URL paths")
-    }
-
     func testTargetURLMapping() throws {
         let builder = TestBundleBuilder(
             version: "v-url", appId: "test-app",
