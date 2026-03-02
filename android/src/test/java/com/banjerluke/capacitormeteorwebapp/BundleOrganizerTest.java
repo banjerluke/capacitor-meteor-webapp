@@ -13,7 +13,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class BundleOrganizerTest {
@@ -63,6 +65,49 @@ public class BundleOrganizerTest {
         List<String> errors = BundleOrganizer.validateBundleOrganization(bundle);
 
         assertFalse(errors.isEmpty());
+        assertEquals("Expected one specific validation error", 1, errors.size());
+        assertTrue("Error should include offending path", errors.get(0).contains("/../bad.js"));
+        assertTrue("Error should explain traversal failure", errors.get(0).contains("path traversal"));
+    }
+
+    @Test
+    public void validateBundlePassesForValidBundle() throws Exception {
+        String manifest = manifestForEntry("app/main.js", "/app/main.js", "0123456789012345678901234567890123456789");
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+        List<String> errors = BundleOrganizer.validateBundleOrganization(bundle);
+
+        assertTrue("Valid bundle should produce no validation errors", errors.isEmpty());
+    }
+
+    @Test
+    public void assetLookupNormalizesUrlPathWithQueryString() throws Exception {
+        String manifest = "{"
+            + "\"version\":\"v1\","
+            + "\"cordovaCompatibilityVersions\":{\"android\":\"android-1\"},"
+            + "\"manifest\":[{"
+            + "\"where\":\"client\","
+            + "\"path\":\"app/main.js\","
+            + "\"url\":\"/app/main.js?cacheBust=1\","
+            + "\"type\":\"js\","
+            + "\"cacheable\":true,"
+            + "\"hash\":\"0123456789012345678901234567890123456789\""
+            + "}]"
+            + "}";
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+        Asset asset = bundle.assetForUrlPath("/app/main.js");
+
+        assertNotNull("Asset should be addressable via normalized URL path", asset);
+        assertEquals("app/main.js", asset.filePath);
+        File targetFile = BundleOrganizer.targetFileForAsset(asset, targetDirectory);
+        assertEquals(new File(targetDirectory, "app/main.js").getPath(), targetFile.getPath());
     }
 
     private static InputStream openFromMap(Map<String, byte[]> files, String path) throws java.io.IOException {

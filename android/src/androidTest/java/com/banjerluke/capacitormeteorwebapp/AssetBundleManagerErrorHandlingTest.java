@@ -121,6 +121,14 @@ public class AssetBundleManagerErrorHandlingTest {
         return failure.get();
     }
 
+    private WebAppError assertWebAppErrorOfType(Throwable error, WebAppError.Type expectedType) {
+        assertNotNull("Should have received an error", error);
+        assertTrue("Expected WebAppError but got " + error.getClass().getName(), error instanceof WebAppError);
+        WebAppError webAppError = (WebAppError) error;
+        assertEquals("Unexpected WebAppError type", expectedType, webAppError.getType());
+        return webAppError;
+    }
+
     @Test
     public void missingAsset_callsOnError() throws Exception {
         String version = "v-missing-asset";
@@ -155,9 +163,10 @@ public class AssetBundleManagerErrorHandlingTest {
             }
         });
 
-        assertNotNull("Should have received an error", error);
+        WebAppError webAppError = assertWebAppErrorOfType(error, WebAppError.Type.DOWNLOAD_FAILURE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention non-success status",
-            error.getMessage().contains("Non-success status code") || error.getMessage().contains("404"));
+            webAppError.getMessage().contains("Non-success status code") || webAppError.getMessage().contains("404"));
     }
 
     @Test
@@ -192,9 +201,10 @@ public class AssetBundleManagerErrorHandlingTest {
             }
         });
 
-        assertNotNull("Should have received an error for hash mismatch", error);
+        WebAppError webAppError = assertWebAppErrorOfType(error, WebAppError.Type.DOWNLOAD_FAILURE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention hash mismatch",
-            error.getMessage().contains("Hash mismatch"));
+            webAppError.getMessage().contains("Hash mismatch"));
     }
 
     @Test
@@ -241,9 +251,10 @@ public class AssetBundleManagerErrorHandlingTest {
             }
         });
 
-        assertNotNull("Should have received an error for version mismatch", error);
+        WebAppError webAppError = assertWebAppErrorOfType(error, WebAppError.Type.DOWNLOAD_FAILURE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention version mismatch",
-            error.getMessage().contains("Version mismatch"));
+            webAppError.getMessage().contains("Version mismatch"));
     }
 
     @Test
@@ -282,9 +293,10 @@ public class AssetBundleManagerErrorHandlingTest {
             }
         });
 
-        assertNotNull("Should have received an error for missing ROOT_URL", error);
+        WebAppError webAppError = assertWebAppErrorOfType(error, WebAppError.Type.UNSUITABLE_ASSET_BUNDLE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention ROOT_URL",
-            error.getMessage().contains("ROOT_URL"));
+            webAppError.getMessage().contains("ROOT_URL"));
     }
 
     @Test
@@ -361,10 +373,10 @@ public class AssetBundleManagerErrorHandlingTest {
         manager.shutdown();
 
         assertNull("Should not have downloaded successfully", downloaded.get());
-        Throwable error = failure.get();
-        assertNotNull("Should have received an error for localhost ROOT_URL change", error);
+        WebAppError webAppError = assertWebAppErrorOfType(failure.get(), WebAppError.Type.UNSUITABLE_ASSET_BUNDLE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention localhost",
-            error.getMessage().contains("localhost"));
+            webAppError.getMessage().contains("localhost"));
     }
 
     @Test
@@ -403,9 +415,10 @@ public class AssetBundleManagerErrorHandlingTest {
             }
         });
 
-        assertNotNull("Should have received an error for missing appId", error);
+        WebAppError webAppError = assertWebAppErrorOfType(error, WebAppError.Type.UNSUITABLE_ASSET_BUNDLE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention appId",
-            error.getMessage().contains("appId"));
+            webAppError.getMessage().contains("appId"));
     }
 
     @Test
@@ -445,9 +458,10 @@ public class AssetBundleManagerErrorHandlingTest {
             }
         });
 
-        assertNotNull("Should have received an error for wrong appId", error);
+        WebAppError webAppError = assertWebAppErrorOfType(error, WebAppError.Type.UNSUITABLE_ASSET_BUNDLE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention appId mismatch",
-            error.getMessage().contains("appId"));
+            webAppError.getMessage().contains("appId"));
     }
 
     @Test
@@ -499,10 +513,10 @@ public class AssetBundleManagerErrorHandlingTest {
         manager.shutdown();
 
         assertNull("Should not have downloaded successfully", downloaded.get());
-        Throwable error = failure.get();
-        assertNotNull("Should have received an error for manifest download failure", error);
+        WebAppError webAppError = assertWebAppErrorOfType(failure.get(), WebAppError.Type.DOWNLOAD_FAILURE);
+        // Secondary: verify message mentions specific detail.
         assertTrue("Error should mention non-success status",
-            error.getMessage().contains("Non-success status code") || error.getMessage().contains("500"));
+            webAppError.getMessage().contains("Non-success status code") || webAppError.getMessage().contains("500"));
     }
 
     @Test

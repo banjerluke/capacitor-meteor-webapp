@@ -43,6 +43,29 @@ public class AssetBundleManagerUpdateLifecycleTest {
     private String rootUrl;
     private String compatibility;
 
+    private static final class CallbackSpy {
+        private final CountDownLatch callbackLatch = new CountDownLatch(1);
+        private final AtomicReference<AssetBundle> downloaded = new AtomicReference<>();
+        private final AtomicReference<Throwable> failure = new AtomicReference<>();
+        private final AtomicInteger callbackCount = new AtomicInteger(0);
+
+        void onFinished(AssetBundle assetBundle) {
+            downloaded.set(assetBundle);
+            callbackCount.incrementAndGet();
+            callbackLatch.countDown();
+        }
+
+        void onError(Throwable cause) {
+            failure.set(cause);
+            callbackCount.incrementAndGet();
+            callbackLatch.countDown();
+        }
+
+        boolean awaitCallback(long timeout, TimeUnit unit) throws InterruptedException {
+            return callbackLatch.await(timeout, unit);
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
         server = new MockWebServer();
@@ -489,13 +512,21 @@ public class AssetBundleManagerUpdateLifecycleTest {
 
     @Test
     public void sameVersionOnServer_callbackNotInvoked() throws Exception {
-        String version = "v-no-update";
+        String skippedVersion = "v-no-update";
+        String drainVersion = "v-no-update-drain";
+        TestBundleBuilder skippedBuilder = new TestBundleBuilder(skippedVersion, appId, rootUrl, compatibility)
+            .addAsset("app/main.js", "js", "console.log('no update skip');");
+        TestBundleBuilder drainBuilder = new TestBundleBuilder(drainVersion, appId, rootUrl, compatibility)
+            .addAsset("app/main.js", "js", "console.log('no update drain');");
 
-        TestBundleBuilder serverBuilder = new TestBundleBuilder(version, appId, rootUrl, compatibility)
-            .addAsset("app/main.js", "js", "console.log('no update');");
+        String skippedManifest = skippedBuilder.buildManifestJson();
+        String drainManifest = drainBuilder.buildManifestJson();
+        String drainIndex = drainBuilder.buildIndexHtml();
+        String drainHash = drainBuilder.getAssets().get(0).hash;
 
-        // Only serve the manifest (shouldDownloadBundleForManifest returns false)
-        String manifestJson = serverBuilder.buildManifestJson();
+        AtomicInteger manifestRequests = new AtomicInteger(0);
+        AtomicInteger indexRequests = new AtomicInteger(0);
+        AtomicInteger assetRequests = new AtomicInteger(0);
         server.setDispatcher(new Dispatcher() {
             @Override
             public MockResponse dispatch(RecordedRequest request) {
@@ -503,7 +534,19 @@ public class AssetBundleManagerUpdateLifecycleTest {
                 String cleanPath = path == null ? "" : path.split("\\?")[0];
 
                 if ("/__cordova/manifest.json".equals(cleanPath)) {
-                    return new MockResponse().setResponseCode(200).setBody(manifestJson);
+                    int count = manifestRequests.incrementAndGet();
+                    return new MockResponse().setResponseCode(200).setBody(count == 1 ? skippedManifest : drainManifest);
+                }
+                if ("/__cordova/".equals(cleanPath)) {
+                    indexRequests.incrementAndGet();
+                    return new MockResponse().setResponseCode(200).setBody(drainIndex);
+                }
+                if ("/__cordova/app/main.js".equals(cleanPath)) {
+                    assetRequests.incrementAndGet();
+                    return new MockResponse()
+                        .setResponseCode(200)
+                        .addHeader("ETag", "\"" + drainHash + "\"")
+                        .setBody("console.log('no update drain');");
                 }
                 return new MockResponse().setResponseCode(404);
             }
@@ -513,32 +556,41 @@ public class AssetBundleManagerUpdateLifecycleTest {
         WebAppConfiguration configuration = createConfiguration();
         AssetBundleManager manager = new AssetBundleManager(context, configuration, versionsDirectory, initialBundle);
 
-        CountDownLatch latch = new CountDownLatch(1);
+        CallbackSpy callbackSpy = new CallbackSpy();
+        AtomicInteger shouldDownloadCalls = new AtomicInteger(0);
 
         manager.setCallback(new AssetBundleManager.Callback() {
             @Override
             public boolean shouldDownloadBundleForManifest(AssetManifest manifest) {
-                return false; // Reject the download
+                // Skip first manifest, then allow second manifest to drain the queue.
+                return shouldDownloadCalls.incrementAndGet() > 1;
             }
 
             @Override
             public void onFinishedDownloadingAssetBundle(AssetBundle assetBundle) {
-                latch.countDown(); // Should NOT be called
+                callbackSpy.onFinished(assetBundle);
             }
 
             @Override
             public void onError(Throwable cause) {
-                latch.countDown(); // Should NOT be called
+                callbackSpy.onError(cause);
             }
         });
 
         URL baseUrl = server.url("/__cordova/").url();
-        manager.checkForUpdates(baseUrl);
+        manager.checkForUpdates(baseUrl); // Skip path should not trigger callback
+        manager.checkForUpdates(baseUrl); // Drain path should trigger callback
 
-        // Neither callback should fire — wait briefly and verify
-        assertFalse("Callbacks should not be invoked when shouldDownload returns false",
-            latch.await(3, TimeUnit.SECONDS));
-        assertEquals("Only manifest should be requested when download is skipped", 1, server.getRequestCount());
+        assertTrue("Timed out waiting for drain callback", callbackSpy.awaitCallback(30, TimeUnit.SECONDS));
+        assertNull("Drain callback should not fail: " + callbackSpy.failure.get(), callbackSpy.failure.get());
+        assertNotNull("Drain should produce a downloaded bundle", callbackSpy.downloaded.get());
+        assertEquals("Drain callback should target the second version", drainVersion, callbackSpy.downloaded.get().getVersion());
+        assertEquals("Only the drain action should invoke callback", 1, callbackSpy.callbackCount.get());
+
+        assertEquals("Callback filter should be evaluated for both manifests", 2, shouldDownloadCalls.get());
+        assertEquals("Skip and drain checks should each fetch manifest once", 2, manifestRequests.get());
+        assertEquals("Only drain should fetch index", 1, indexRequests.get());
+        assertEquals("Only drain should fetch app asset", 1, assetRequests.get());
 
         manager.shutdown();
     }

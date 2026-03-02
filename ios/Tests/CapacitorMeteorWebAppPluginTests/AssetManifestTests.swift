@@ -91,6 +91,16 @@ final class AssetManifestTests: XCTestCase {
         assertInvalidManifest(json: json, reasonContains: "cordovaCompatibilityVersion")
     }
 
+    func testThrowsOnMissingCordovaCompatibilityVersionsObject() {
+        let json = """
+        {
+            "version": "v1",
+            "manifest": []
+        }
+        """
+        assertInvalidManifest(json: json, reasonContains: "cordovaCompatibilityVersion")
+    }
+
     func testThrowsOnIncompatibleFormat() {
         let json = """
         {
@@ -137,7 +147,7 @@ final class AssetManifestTests: XCTestCase {
         XCTAssertEqual(entry.sourceMapURLPath, "/app.js.map")
     }
 
-    func testParsesMissingHashAsNil() throws {
+    func testParsesMissingHashAsNil_hashIsOptionalByDesign() throws {
         let json = """
         {
             "version": "v1",
@@ -157,6 +167,7 @@ final class AssetManifestTests: XCTestCase {
 
         XCTAssertEqual(manifest.entries.count, 1)
         let entry = manifest.entries[0]
+        // hash is intentionally optional - assets without hashes skip cache validation.
         XCTAssertNil(entry.hash)
         XCTAssertNil(entry.sourceMapPath)
         XCTAssertNil(entry.sourceMapURLPath)
