@@ -128,6 +128,33 @@ public protocol CapacitorBridge: AnyObject {
         )
     }
 
+    /// Test-only initializer that bypasses Bundle.main resource discovery and
+    /// allows deterministic lifecycle testing with injected dependencies.
+    init(
+        capacitorBridge: CapacitorBridge?,
+        configuration: WebAppConfiguration,
+        assetBundleManager: AssetBundleManager,
+        currentAssetBundle: AssetBundle,
+        pendingAssetBundle: AssetBundle? = nil,
+        servingDirectoryURL: URL,
+        startupTimeoutInterval: TimeInterval = 30.0
+    ) {
+        super.init()
+
+        self.capacitorBridge = capacitorBridge
+        self.configuration = configuration
+        self.assetBundleManager = assetBundleManager
+        self.servingDirectoryURL = servingDirectoryURL
+        self.startupTimeoutInterval = startupTimeoutInterval
+
+        self.currentAssetBundle = currentAssetBundle
+        self.pendingAssetBundle = pendingAssetBundle
+
+        self.assetBundleManager.delegate = self
+        setupStartupTimer()
+        setupCurrentBundle()
+    }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
@@ -581,6 +608,13 @@ public protocol CapacitorBridge: AnyObject {
         // Stop startup timer when going into the background, to avoid
         // blacklisting a version just because the web view has been suspended
         startupTimer?.stop()
+    }
+
+    // MARK: - Testing Helpers
+
+    /// Triggers the same recovery flow used by startup timeout handling.
+    func triggerStartupTimeoutForTesting() {
+        revertToLastKnownGoodVersion()
     }
 
     // MARK: - AssetBundleManagerDelegate
