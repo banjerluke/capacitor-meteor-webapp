@@ -130,7 +130,9 @@ final class WebAppConfiguration {
         get {
             let versions =
                 userDefaults.array(forKey: "MeteorWebAppBlacklistedVersions") as? [String] ?? []
-            NSLog("BLACKLIST - blacklistedVersions: \(versions)")
+            if !versions.isEmpty {
+                NSLog("BLACKLIST - blacklistedVersions: \(versions)")
+            }
             return versions
         }
 
@@ -149,7 +151,9 @@ final class WebAppConfiguration {
     var versionsToRetry: [String] {
         get {
             let versions = userDefaults.array(forKey: "MeteorWebAppVersionsToRetry") as? [String] ?? []
-            NSLog("BLACKLIST - versionsToRetry: \(versions)")
+            if !versions.isEmpty {
+                NSLog("BLACKLIST - versionsToRetry: \(versions)")
+            }
             return versions
         }
         set {
