@@ -27,6 +27,11 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         void onError(String message);
     }
 
+    private interface ServerPathController {
+        void setServerBasePath(String path) throws WebAppError;
+        void setServerAssetPath(String path) throws WebAppError;
+    }
+
     private static final String PREFERENCES_NAME = "MeteorWebApp";
     private static final long STARTUP_TIMEOUT_MS = 30_000L;
 
@@ -34,6 +39,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     private final Context context;
     private final Handler mainHandler;
     private final ExecutorService bundleSwitchExecutor;
+    private final ServerPathController serverPathController;
 
     private final WebAppConfiguration configuration;
 
@@ -60,11 +66,39 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         this.context = bridge.getContext().getApplicationContext();
         this.mainHandler = new Handler(Looper.getMainLooper());
         this.bundleSwitchExecutor = Executors.newSingleThreadExecutor();
+        this.serverPathController = createBridgeBackedServerPathController();
 
         SharedPreferences preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
         this.configuration = new WebAppConfiguration(preferences);
 
         initializeAssetBundles();
+    }
+
+    // Test seam for app-level lifecycle/orchestration tests without requiring a live Capacitor Bridge.
+    CapacitorMeteorWebApp(
+        Context context,
+        Handler mainHandler,
+        ExecutorService bundleSwitchExecutor,
+        WebAppConfiguration configuration,
+        AssetBundleManager assetBundleManager,
+        AssetBundle initialAssetBundle,
+        AssetBundle currentAssetBundle,
+        File versionsDirectory,
+        File servingDirectory
+    ) {
+        this.bridge = null;
+        this.context = context.getApplicationContext();
+        this.mainHandler = mainHandler;
+        this.bundleSwitchExecutor = bundleSwitchExecutor;
+        this.serverPathController = createNoOpServerPathController();
+        this.configuration = configuration;
+        this.assetBundleManager = assetBundleManager;
+        this.initialAssetBundle = initialAssetBundle;
+        this.currentAssetBundle = currentAssetBundle;
+        this.pendingAssetBundle = null;
+        this.versionsDirectory = versionsDirectory;
+        this.servingDirectory = servingDirectory;
+        this.assetBundleManager.setCallback(this);
     }
 
     void setEventCallback(EventCallback eventCallback) {
@@ -332,25 +366,11 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     }
 
     private void setServerBasePath(String path) throws WebAppError {
-        if (bridge == null) {
-            throw new WebAppError(
-                WebAppError.Type.BRIDGE_UNAVAILABLE,
-                "Bridge unavailable while setting server base path"
-            );
-        }
-
-        mainHandler.post(() -> bridge.setServerBasePath(path));
+        serverPathController.setServerBasePath(path);
     }
 
     private void setServerAssetPath(String path) throws WebAppError {
-        if (bridge == null) {
-            throw new WebAppError(
-                WebAppError.Type.BRIDGE_UNAVAILABLE,
-                "Bridge unavailable while setting server asset path"
-            );
-        }
-
-        mainHandler.post(() -> bridge.setServerAssetPath(path));
+        serverPathController.setServerAssetPath(path);
     }
 
     private void onStartupTimeout() {
@@ -490,5 +510,45 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     @Override
     public void onError(Throwable cause) {
         notifyError(errorMessageForThrowable(cause));
+    }
+
+    private ServerPathController createBridgeBackedServerPathController() {
+        return new ServerPathController() {
+            @Override
+            public void setServerBasePath(String path) throws WebAppError {
+                if (bridge == null) {
+                    throw new WebAppError(
+                        WebAppError.Type.BRIDGE_UNAVAILABLE,
+                        "Bridge unavailable while setting server base path"
+                    );
+                }
+                mainHandler.post(() -> bridge.setServerBasePath(path));
+            }
+
+            @Override
+            public void setServerAssetPath(String path) throws WebAppError {
+                if (bridge == null) {
+                    throw new WebAppError(
+                        WebAppError.Type.BRIDGE_UNAVAILABLE,
+                        "Bridge unavailable while setting server asset path"
+                    );
+                }
+                mainHandler.post(() -> bridge.setServerAssetPath(path));
+            }
+        };
+    }
+
+    private static ServerPathController createNoOpServerPathController() {
+        return new ServerPathController() {
+            @Override
+            public void setServerBasePath(String path) {
+                // no-op for orchestration tests
+            }
+
+            @Override
+            public void setServerAssetPath(String path) {
+                // no-op for orchestration tests
+            }
+        };
     }
 }
