@@ -110,6 +110,94 @@ final class BundleOrganizerTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: targetDir.path))
     }
 
+    func testOrganizeBundleSkipsMissingNonCriticalAsset() throws {
+        // Build a bundle with a .well-known file in the manifest, then delete it
+        // from disk before organizing. Simulates APK ignoreAssetsPattern excluding
+        // dot-files from the bundle.
+        let builder = TestBundleBuilder(
+            version: "v-skip", appId: "test-app",
+            rootUrl: "http://example.com", compatibility: "ios-1")
+            .addAsset("app/main.js", type: "js", content: "console.log('ok');")
+            .addAsset(".well-known/apple-app-site-association", type: "json", content: "{}")
+
+        let bundleDir = tempDir.appendingPathComponent("bundle")
+        try builder.writeToDirectory(bundleDir)
+
+        // Delete the .well-known file to simulate it being excluded from the bundle
+        try FileManager.default.removeItem(
+            at: bundleDir.appendingPathComponent(".well-known/apple-app-site-association"))
+
+        let bundle = try AssetBundle(directoryURL: bundleDir)
+
+        let targetDir = tempDir.appendingPathComponent("organized")
+        // Should succeed — missing non-critical asset is skipped with a warning
+        try BundleOrganizer.organizeBundle(bundle, in: targetDir)
+
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: targetDir.appendingPathComponent("index.html").path),
+            "index.html should be organized")
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: targetDir.appendingPathComponent("app/main.js").path),
+            "main.js should be organized")
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: targetDir.appendingPathComponent(".well-known/apple-app-site-association").path),
+            "missing asset should not appear in organized bundle")
+    }
+
+    func testOrganizeBundleThrowsForMissingIndexHtml() throws {
+        let builder = TestBundleBuilder(
+            version: "v-noindex", appId: "test-app",
+            rootUrl: "http://example.com", compatibility: "ios-1")
+            .addAsset("app/main.js", type: "js", content: "console.log('ok');")
+
+        let bundleDir = tempDir.appendingPathComponent("bundle")
+        try builder.writeToDirectory(bundleDir)
+
+        // Delete index.html — this is critical and must cause a failure
+        try FileManager.default.removeItem(
+            at: bundleDir.appendingPathComponent("index.html"))
+
+        let bundle = try AssetBundle(directoryURL: bundleDir)
+
+        let targetDir = tempDir.appendingPathComponent("organized")
+        XCTAssertThrowsError(try BundleOrganizer.organizeBundle(bundle, in: targetDir)) { error in
+            guard let webAppError = error as? WebAppError else {
+                XCTFail("Expected WebAppError, got \(type(of: error))")
+                return
+            }
+            XCTAssertTrue(webAppError.description.contains("Source file does not exist"),
+                "Error should reference missing source file")
+        }
+    }
+
+    func testOrganizeBundleSkipsMissingSourceMap() throws {
+        let builder = TestBundleBuilder(
+            version: "v-map", appId: "test-app",
+            rootUrl: "http://example.com", compatibility: "ios-1")
+            .addAssetWithSourceMap("app/main.js", type: "js",
+                content: "console.log('ok');", sourceMapPath: "app/main.js.map")
+
+        let bundleDir = tempDir.appendingPathComponent("bundle")
+        try builder.writeToDirectory(bundleDir)
+        // Source map file is not written by the builder (only assets are written),
+        // so app/main.js.map is already missing. Verify organization still succeeds.
+
+        let bundle = try AssetBundle(directoryURL: bundleDir)
+
+        let targetDir = tempDir.appendingPathComponent("organized")
+        try BundleOrganizer.organizeBundle(bundle, in: targetDir)
+
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: targetDir.appendingPathComponent("index.html").path),
+            "index.html should be organized")
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: targetDir.appendingPathComponent("app/main.js").path),
+            "main.js should be organized")
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: targetDir.appendingPathComponent("app/main.js.map").path),
+            "source map should not appear in organized bundle")
+    }
+
     func testOrganizeBundleHandlesInheritedAssets() throws {
         let parentBuilder = TestBundleBuilder(
             version: "v-parent", appId: "test-app",

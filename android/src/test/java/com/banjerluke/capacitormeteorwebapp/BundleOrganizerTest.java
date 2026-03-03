@@ -16,6 +16,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class BundleOrganizerTest {
@@ -108,6 +109,93 @@ public class BundleOrganizerTest {
         assertEquals("app/main.js", asset.filePath);
         File targetFile = BundleOrganizer.targetFileForAsset(asset, targetDirectory);
         assertEquals(new File(targetDirectory, "app/main.js").getPath(), targetFile.getPath());
+    }
+
+    @Test
+    public void organizeBundleSkipsMissingNonCriticalAsset() throws Exception {
+        // Manifest references a .well-known file but the file is NOT in the map.
+        // This simulates the ignoreAssetsPattern scenario where a file appears in
+        // the manifest but was excluded from the APK assets.
+        String manifest = "{"
+            + "\"version\":\"v1\","
+            + "\"cordovaCompatibilityVersions\":{\"android\":\"android-1\"},"
+            + "\"manifest\":["
+            + "{\"where\":\"client\",\"path\":\"app/main.js\",\"url\":\"/app/main.js\",\"type\":\"js\",\"cacheable\":true,\"hash\":\"0123456789012345678901234567890123456789\"},"
+            + "{\"where\":\"client\",\"path\":\".well-known/apple-app-site-association\",\"url\":\"/.well-known/apple-app-site-association\",\"type\":\"json\",\"cacheable\":true,\"hash\":\"abcdef1234567890abcdef1234567890abcdef12\"}"
+            + "]}";
+
+        String runtimeConfig = "{\"ROOT_URL\":\"https://example.com\",\"appId\":\"test-app\",\"autoupdateVersionCordova\":\"v1\"}";
+        String indexHtml = "<html><head><script>__meteor_runtime_config__ = JSON.parse(decodeURIComponent(\""
+            + URLEncoder.encode(runtimeConfig, "UTF-8")
+            + "\"))</script></head><body></body></html>";
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+        files.put("index.html", indexHtml.getBytes(StandardCharsets.UTF_8));
+        files.put("app/main.js", "console.log('ok');".getBytes(StandardCharsets.UTF_8));
+        // Intentionally NOT adding .well-known/apple-app-site-association
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+
+        // Should succeed — missing non-critical asset is skipped with a warning
+        BundleOrganizer.organizeBundle(bundle, targetDirectory);
+
+        assertTrue("index.html should be organized", new File(targetDirectory, "index.html").exists());
+        assertTrue("main.js should be organized", new File(targetDirectory, "app/main.js").exists());
+        assertFalse("missing asset should not appear", new File(targetDirectory, ".well-known/apple-app-site-association").exists());
+    }
+
+    @Test
+    public void organizeBundleThrowsForMissingIndexHtml() throws Exception {
+        String manifest = manifestForEntry("app/main.js", "/app/main.js", "0123456789012345678901234567890123456789");
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+        // Intentionally NOT adding index.html — this is critical and must fail
+        files.put("app/main.js", "console.log('ok');".getBytes(StandardCharsets.UTF_8));
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+
+        WebAppError error = assertThrows(WebAppError.class, () -> BundleOrganizer.organizeBundle(bundle, targetDirectory));
+        assertTrue("Error should reference index.html", error.getMessage().contains("index.html"));
+    }
+
+    @Test
+    public void organizeBundleSkipsMissingSourceMap() throws Exception {
+        // Manifest references a source map via sourceMap/sourceMapUrl fields
+        String manifest = "{"
+            + "\"version\":\"v1\","
+            + "\"cordovaCompatibilityVersions\":{\"android\":\"android-1\"},"
+            + "\"manifest\":[{"
+            + "\"where\":\"client\","
+            + "\"path\":\"app/main.js\","
+            + "\"url\":\"/app/main.js\","
+            + "\"type\":\"js\","
+            + "\"cacheable\":true,"
+            + "\"hash\":\"0123456789012345678901234567890123456789\","
+            + "\"sourceMap\":\"app/main.js.map\","
+            + "\"sourceMapUrl\":\"/app/main.js.map\""
+            + "}]}";
+
+        String runtimeConfig = "{\"ROOT_URL\":\"https://example.com\",\"appId\":\"test-app\",\"autoupdateVersionCordova\":\"v1\"}";
+        String indexHtml = "<html><head><script>__meteor_runtime_config__ = JSON.parse(decodeURIComponent(\""
+            + URLEncoder.encode(runtimeConfig, "UTF-8")
+            + "\"))</script></head><body></body></html>";
+
+        Map<String, byte[]> files = new HashMap<>();
+        files.put("program.json", manifest.getBytes(StandardCharsets.UTF_8));
+        files.put("index.html", indexHtml.getBytes(StandardCharsets.UTF_8));
+        files.put("app/main.js", "console.log('ok');".getBytes(StandardCharsets.UTF_8));
+        // Intentionally NOT adding app/main.js.map
+
+        AssetBundle bundle = AssetBundle.fromReader("test", path -> openFromMap(files, path), null);
+
+        // Should succeed — missing source map is skipped silently
+        BundleOrganizer.organizeBundle(bundle, targetDirectory);
+
+        assertTrue("index.html should be organized", new File(targetDirectory, "index.html").exists());
+        assertTrue("main.js should be organized", new File(targetDirectory, "app/main.js").exists());
+        assertFalse("source map should not appear", new File(targetDirectory, "app/main.js.map").exists());
     }
 
     private static InputStream openFromMap(Map<String, byte[]> files, String path) throws java.io.IOException {

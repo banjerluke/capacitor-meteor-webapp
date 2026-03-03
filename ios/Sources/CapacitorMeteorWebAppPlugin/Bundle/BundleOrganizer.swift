@@ -35,21 +35,25 @@ public class BundleOrganizer {
         try fileManager.createDirectory(
             at: targetDirectory, withIntermediateDirectories: true, attributes: nil)
 
+        var skippedAssets: [String] = []
+
         // Organize own assets
         for asset in bundle.ownAssets {
-            try organizeAsset(asset, in: targetDirectory, fileManager: fileManager)
+            try organizeAsset(asset, in: targetDirectory, fileManager: fileManager, skippedAssets: &skippedAssets)
         }
 
         // Also organize parent assets that this bundle inherits but doesn't override
-        var inheritedAssetsOrganized = 0
         if let parentBundle = bundle.parentAssetBundle {
             for parentAsset in parentBundle.ownAssets {
                 // Only organize parent assets that we don't have in our own assets
                 if bundle.ownAssetsByURLPath[parentAsset.urlPath] == nil {
-                    try organizeAsset(parentAsset, in: targetDirectory, fileManager: fileManager)
-                    inheritedAssetsOrganized += 1
+                    try organizeAsset(parentAsset, in: targetDirectory, fileManager: fileManager, skippedAssets: &skippedAssets)
                 }
             }
+        }
+
+        if !skippedAssets.isEmpty {
+            logger.warning("Bundle organization completed with \(skippedAssets.count) missing asset(s) | bundleVersion=\(bundle.version) | skipped=\(skippedAssets)")
         }
     }
 
@@ -60,7 +64,8 @@ public class BundleOrganizer {
     ///   - fileManager: File manager instance
     /// - Throws: WebAppError if organization fails
     private static func organizeAsset(
-        _ asset: Asset, in targetDirectory: URL, fileManager: FileManager
+        _ asset: Asset, in targetDirectory: URL, fileManager: FileManager,
+        skippedAssets: inout [String]
     ) throws {
         let sourceURL = asset.fileURL
         let targetURL = targetURLForAsset(asset, in: targetDirectory)
@@ -73,12 +78,17 @@ public class BundleOrganizer {
         // Check if source file exists
         guard fileManager.fileExists(atPath: sourceURL.path) else {
             if asset.urlPath.hasSuffix(".map") || asset.fileURL.pathExtension == "map" {
-                // Skip missing source maps - they may not be served in production
+                // Skip missing source maps silently
                 return
             }
-            logger.error("Source file missing - Asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
-            throw WebAppError.fileSystemError(
-                reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
+            if asset.urlPath == "/" || asset.urlPath == "/index.html" {
+                logger.error("Source file missing for critical asset: \(asset.urlPath), Expected path: \(sourceURL.path)")
+                throw WebAppError.fileSystemError(
+                    reason: "Source file does not exist: \(sourceURL.path)", underlyingError: nil)
+            }
+            logger.warning("Missing asset skipped during bundle organization | urlPath=\(asset.urlPath) | filePath=\(asset.filePath) | bundleVersion=\(asset.bundle.version)")
+            skippedAssets.append(asset.urlPath)
+            return
         }
 
         // If target already exists, remove it first

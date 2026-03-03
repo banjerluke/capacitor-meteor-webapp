@@ -1,5 +1,7 @@
 package com.banjerluke.capacitormeteorwebapp;
 
+import android.util.Log;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -14,6 +16,8 @@ import java.util.Locale;
 import java.util.Set;
 
 final class BundleOrganizer {
+
+    private static final String LOG_TAG = "CapacitorMeteorWebApp";
 
     private static final String SHIM_SCRIPT =
         "<script>\n"
@@ -101,8 +105,10 @@ final class BundleOrganizer {
             );
         }
 
+        List<String> skippedAssets = new ArrayList<>();
+
         for (Asset asset : bundle.getOwnAssets()) {
-            organizeAsset(asset, targetDirectory);
+            organizeAsset(asset, targetDirectory, skippedAssets);
         }
 
         AssetBundle parentBundle = bundle.getParentAssetBundle();
@@ -111,8 +117,14 @@ final class BundleOrganizer {
                 if (bundle.getOwnAssetsByUrlPath().containsKey(parentAsset.urlPath)) {
                     continue;
                 }
-                organizeAsset(parentAsset, targetDirectory);
+                organizeAsset(parentAsset, targetDirectory, skippedAssets);
             }
+        }
+
+        if (!skippedAssets.isEmpty()) {
+            logWarning("Bundle organization completed with " + skippedAssets.size()
+                + " missing asset(s) | bundleVersion=" + bundle.getVersion()
+                + " | skipped=" + skippedAssets);
         }
     }
 
@@ -161,7 +173,8 @@ final class BundleOrganizer {
         }
     }
 
-    private static void organizeAsset(Asset asset, File targetDirectory) throws WebAppError {
+    private static void organizeAsset(Asset asset, File targetDirectory, List<String> skippedAssets)
+        throws WebAppError {
         final File targetFile;
         try {
             targetFile = targetFileForAsset(asset, targetDirectory);
@@ -186,14 +199,17 @@ final class BundleOrganizer {
                 FileOps.copy(source, targetFile);
             }
         } catch (FileNotFoundException e) {
+            // index.html is handled by organizeIndexHtml() above which throws its
+            // own WebAppError if the file is missing, so only non-index assets
+            // reach this catch block.
             if (isSourceMapAsset(asset)) {
                 return;
             }
-            throw new WebAppError(
-                WebAppError.Type.FILE_SYSTEM_ERROR,
-                "Source file missing for asset: " + asset.urlPath,
-                e
-            );
+            logWarning("Missing asset skipped during bundle organization"
+                + " | urlPath=" + asset.urlPath
+                + " | filePath=" + asset.filePath
+                + " | bundleVersion=" + asset.bundle.getVersion());
+            skippedAssets.add(asset.urlPath);
         } catch (IOException e) {
             throw new WebAppError(
                 WebAppError.Type.FILE_SYSTEM_ERROR,
@@ -256,6 +272,15 @@ final class BundleOrganizer {
 
     private static boolean isSourceMapAsset(Asset asset) {
         return asset.urlPath.endsWith(".map") || asset.filePath.endsWith(".map");
+    }
+
+    private static void logWarning(String message) {
+        try {
+            Log.w(LOG_TAG, message);
+        } catch (RuntimeException ignored) {
+            // Local JVM tests do not mock android.util.Log; keep behavior test-safe.
+            System.err.println(LOG_TAG + " WARN: " + message);
+        }
     }
 
     private static String normalizeUrlPath(String rawUrlPath) {
