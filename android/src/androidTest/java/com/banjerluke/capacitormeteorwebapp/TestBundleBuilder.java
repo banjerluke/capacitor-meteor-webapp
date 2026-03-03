@@ -22,14 +22,16 @@ final class TestBundleBuilder {
 
     static final class AssetEntry {
         final String path;
+        final String url;
         final String type;
         final String content;
         final String hash;
         final boolean cacheable;
         final String sourceMapPath;
 
-        AssetEntry(String path, String type, String content, String hash, boolean cacheable, String sourceMapPath) {
+        AssetEntry(String path, String url, String type, String content, String hash, boolean cacheable, String sourceMapPath) {
             this.path = path;
+            this.url = url;
             this.type = type;
             this.content = content;
             this.hash = hash;
@@ -53,18 +55,24 @@ final class TestBundleBuilder {
 
     TestBundleBuilder addAsset(String path, String type, String content) {
         String hash = sha1Hex(content);
-        assets.add(new AssetEntry(path, type, content, hash, true, null));
+        assets.add(new AssetEntry(path, null, type, content, hash, true, null));
         return this;
     }
 
     TestBundleBuilder addAsset(String path, String type, String content, String hash) {
-        assets.add(new AssetEntry(path, type, content, hash, true, null));
+        assets.add(new AssetEntry(path, null, type, content, hash, true, null));
+        return this;
+    }
+
+    TestBundleBuilder addAssetWithUrl(String filePath, String urlPath, String type, String content) {
+        String hash = sha1Hex(content);
+        assets.add(new AssetEntry(filePath, urlPath, type, content, hash, true, null));
         return this;
     }
 
     TestBundleBuilder addAssetWithSourceMap(String path, String type, String content, String sourceMapPath) {
         String hash = sha1Hex(content);
-        assets.add(new AssetEntry(path, type, content, hash, true, sourceMapPath));
+        assets.add(new AssetEntry(path, null, type, content, hash, true, sourceMapPath));
         return this;
     }
 
@@ -81,9 +89,10 @@ final class TestBundleBuilder {
         for (int i = 0; i < assets.size(); i++) {
             AssetEntry asset = assets.get(i);
             if (i > 0) sb.append(",");
+            String url = asset.url != null ? asset.url : "/" + asset.path;
             sb.append("{\"where\":\"client\",");
             sb.append("\"path\":\"").append(asset.path).append("\",");
-            sb.append("\"url\":\"/").append(asset.path).append("\",");
+            sb.append("\"url\":\"").append(url).append("\",");
             sb.append("\"type\":\"").append(asset.type).append("\",");
             sb.append("\"cacheable\":").append(asset.cacheable).append(",");
             sb.append("\"hash\":\"").append(asset.hash).append("\"");

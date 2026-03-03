@@ -29,7 +29,6 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
 
     private interface ServerPathController {
         void setServerBasePath(String path) throws WebAppError;
-        void setServerAssetPath(String path) throws WebAppError;
     }
 
     private static final String PREFERENCES_NAME = "MeteorWebApp";
@@ -85,7 +84,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         AssetBundle currentAssetBundle,
         File versionsDirectory,
         File servingDirectory
-    ) {
+    ) throws WebAppError {
         this.bridge = null;
         this.context = context.getApplicationContext();
         this.mainHandler = mainHandler;
@@ -99,6 +98,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         this.versionsDirectory = versionsDirectory;
         this.servingDirectory = servingDirectory;
         this.assetBundleManager.setCallback(this);
+        setupCurrentBundle();
     }
 
     void setEventCallback(EventCallback eventCallback) {
@@ -221,7 +221,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
 
         selectCurrentAssetBundle();
         pendingAssetBundle = null;
-        setupCurrentBundle(false);
+        setupCurrentBundle();
     }
 
     private void selectCurrentAssetBundle() {
@@ -242,17 +242,8 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         setCurrentAssetBundle(initialAssetBundle);
     }
 
-    private void setupCurrentBundle(boolean forceSwitchToInitialAssetPath) throws WebAppError {
+    private void setupCurrentBundle() throws WebAppError {
         if (currentAssetBundle == null) {
-            return;
-        }
-
-        if (currentAssetBundle == initialAssetBundle) {
-            if (forceSwitchToInitialAssetPath) {
-                setServerAssetPath("public");
-            }
-
-            cleanupOldServingDirectories(null);
             return;
         }
 
@@ -263,7 +254,6 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
 
         BundleOrganizer.organizeBundle(currentAssetBundle, bundleServingDirectory);
         setServerBasePath(bundleServingDirectory.getAbsolutePath());
-
         cleanupOldServingDirectories(currentAssetBundle.getVersion());
     }
 
@@ -346,11 +336,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
             pendingAssetBundle = null;
         }
 
-        if (currentAssetBundle == initialAssetBundle) {
-            setupCurrentBundle(true);
-        } else {
-            setupCurrentBundle(false);
-        }
+        setupCurrentBundle();
     }
 
     private void setCurrentAssetBundle(AssetBundle assetBundle) {
@@ -367,10 +353,6 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
 
     private void setServerBasePath(String path) throws WebAppError {
         serverPathController.setServerBasePath(path);
-    }
-
-    private void setServerAssetPath(String path) throws WebAppError {
-        serverPathController.setServerAssetPath(path);
     }
 
     private void onStartupTimeout() {
@@ -525,16 +507,6 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
                 mainHandler.post(() -> bridge.setServerBasePath(path));
             }
 
-            @Override
-            public void setServerAssetPath(String path) throws WebAppError {
-                if (bridge == null) {
-                    throw new WebAppError(
-                        WebAppError.Type.BRIDGE_UNAVAILABLE,
-                        "Bridge unavailable while setting server asset path"
-                    );
-                }
-                mainHandler.post(() -> bridge.setServerAssetPath(path));
-            }
         };
     }
 
@@ -545,10 +517,6 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
                 // no-op for orchestration tests
             }
 
-            @Override
-            public void setServerAssetPath(String path) {
-                // no-op for orchestration tests
-            }
         };
     }
 }

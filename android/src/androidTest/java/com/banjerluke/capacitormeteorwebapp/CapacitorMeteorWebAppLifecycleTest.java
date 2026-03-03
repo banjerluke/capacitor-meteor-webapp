@@ -162,6 +162,59 @@ public class CapacitorMeteorWebAppLifecycleTest {
     }
 
     @Test
+    public void setupCurrentBundle_organizesInitialBundleByUrlPath() throws Exception {
+        // Create a bundle with divergent filePath vs urlPath, mimicking real Meteor bundles
+        // where filePath="app/main.js" but urlPath="/main.js"
+        TestBundleBuilder builder = new TestBundleBuilder("v-initial-org", appId, rootUrl, compatibility)
+            .addAssetWithUrl("app/main.js", "/main.js", "js", "console.log('organized');")
+            .addAssetWithUrl("app/vite/assets/style.css", "/vite/assets/style.css", "css", "body{}");
+        AssetBundle initialBundle = builder.buildAssetBundle(null);
+
+        WebAppConfiguration configuration = createConfiguration();
+        AssetBundleManager manager = createManager(configuration, initialBundle);
+        ExecutorService bundleSwitchExecutor = Executors.newSingleThreadExecutor();
+
+        // The test seam constructor calls setupCurrentBundle(), which should organize
+        // the initial bundle via BundleOrganizer into the serving directory.
+        CapacitorMeteorWebApp app = new CapacitorMeteorWebApp(
+            context,
+            new Handler(Looper.getMainLooper()),
+            bundleSwitchExecutor,
+            configuration,
+            manager,
+            initialBundle,
+            initialBundle,
+            versionsDirectory,
+            servingDirectory
+        );
+
+        File bundleDir = new File(servingDirectory, "v-initial-org");
+        assertTrue("Serving directory for bundle should exist", bundleDir.exists());
+
+        // Files should be at their urlPath locations, NOT filePath locations
+        assertTrue("main.js should be at urlPath location",
+            new File(bundleDir, "main.js").exists());
+        assertTrue("style.css should be at urlPath location",
+            new File(bundleDir, "vite/assets/style.css").exists());
+        assertFalse("main.js should NOT be at filePath location",
+            new File(bundleDir, "app/main.js").exists());
+        assertFalse("style.css should NOT be at filePath location",
+            new File(bundleDir, "app/vite/assets/style.css").exists());
+
+        // index.html should contain the WebAppLocalServer shim
+        File indexFile = new File(bundleDir, "index.html");
+        assertTrue("index.html should exist", indexFile.exists());
+        String indexContent = new String(
+            java.nio.file.Files.readAllBytes(indexFile.toPath()),
+            java.nio.charset.StandardCharsets.UTF_8
+        );
+        assertTrue("index.html should contain WebAppLocalServer shim",
+            indexContent.contains("WebAppLocalServer"));
+
+        app.handleOnDestroy();
+    }
+
+    @Test
     public void startupDidComplete_marksCurrentAsGoodAndCleansOlderVersions() throws Exception {
         String v1 = "v-app-cleanup-1";
         String v2 = "v-app-cleanup-2";
