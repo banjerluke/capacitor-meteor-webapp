@@ -2,27 +2,34 @@
 
 A Capacitor plugin that brings hot code push functionality to Meteor apps, allowing over-the-air updates without going through app stores. This is a direct port of the proven `cordova-plugin-meteor-webapp` for the Capacitor ecosystem.
 
-Works with existing Meteor Cordova apps by shimming the `window.WebAppLocalServer` API that `cordova-plugin-meteor-webapp` provides and Meteor assumes is present.
+Works with existing Meteor Cordova apps by shimming the `window.WebAppLocalServer` API that `cordova-plugin-meteor-webapp` provides and Meteor assumes is present. **You don't need to change your Meteor app code,** just the build process.
 
 ### WARNING: Still in development. Theoretically complete, with full test suite, but not tested in production yet.
+> **Still in development.** Theoretically complete, with full test suite, but not tested in production yet.
 
 Most of the coding, review, and test-writing was done by Opus 4.6 and Codex 5.3, with heavy review and cross-checking through the process. I took my time because I'm making this for my mature production app, with real users that will be burned if I ship broken code, but I haven't reviewed much of the code myself.
+
+For a deep dive into how the plugin works -- update lifecycle, asset bundle system, version management, failure recovery, and the Cordova compatibility shim -- see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## Features
 
 This plugin inherits the nifty functionality of [Meteor's `cordova-plugin-meteor-webapp`](https://github.com/meteor/cordova-plugin-meteor-webapp):
 
-- 🚀 **Hot Code Push**: Update your Meteor app instantly without app store approval
-- 🔄 **Automatic Updates**: Downloads and applies updates seamlessly in the background
-- 🛡️ **Rollback Protection**: Automatically reverts to the last known good version if updates fail
-- 📱 **iOS Support**: Full native implementation with robust error handling
-- 📱 **Android Support**: Full native implementation mirroring the iOS feature set
+- **Hot Code Push** -- Update your Meteor app instantly without app store approval
+- **Background Downloads** -- Only changed assets are downloaded; partial downloads are resumed automatically
+- **Automatic Rollback** -- If an update fails to start, the plugin reverts to the last known good version; failed versions get one retry before being permanently blacklisted
+- **Cordova Compatibility** -- The `window.WebAppLocalServer` API is shimmed automatically, so Meteor's `autoupdate` package works without changes
+- **iOS & Android** -- Full native implementations (Swift & Java) with closely aligned behavior
 
-## Installation
+## Capacitor Setup
+
+> Note: This section is subject to change when Meteor (hopefully) adopts official support for Capacitor in the future.
 
 We'll assume you're using Meteor v3 -- earlier versions may not work due to being stuck on Node 14 (untested).
 
 Note: You **must** have at least one Cordova platform added to your Meteor project. Run either `meteor add-platform ios` or `meteor add-platform android`, then run `meteor run` at least once before continuing.
+
+### Installation
 
 In your Meteor project directory:
 
@@ -78,7 +85,7 @@ Ignore the warning that says `sync could not run--missing capacitor/www-dist dir
 
 At this point, everything should be set up and ready to run the build script.
 
-## Building/Syncing Capacitor
+### Building/Syncing Capacitor
 
 See `build-and-sync-capacitor.sh` in this repository for a build script that you can use and modify. It has a bunch of comments to help you understand what's going on. In brief, it:
 
@@ -95,26 +102,15 @@ See `build-and-sync-capacitor.sh` in this repository for a build script that you
 
 ## Cordova Compatibility
 
-As part of "organizing" the bundle (putting files where the app expects them to be served), the native code installs a shim for the `WebAppLocalServer` object on `window` that is provided by Cordova's `cordova-plugin-meteor-webapp`, bridging the old API to the new Capacitor plugin.
+The plugin automatically shims `window.WebAppLocalServer` so that Meteor's runtime (and your existing app code) works without changes. The one exception is `localFileSystemUrl()`, which is not supported since Capacitor doesn't embed a local web server. Use [@capacitor/filesystem](https://capacitorjs.com/docs/apis/filesystem) if you need local file access.
 
-The only exception is `WebAppLocalServer.localFileSystemUrl()`. Since we're no longer embedding our own local web server, we can't hijack `/local-filesystem` URLs to serve local files. If you need this functionality, I recommend looking into [@capacitor/filesystem](https://capacitorjs.com/docs/apis/filesystem) instead.
-
-Otherwise, the Meteor runtime will interact with `WebAppLocalServer` as usual and it should Just Work™.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full compatibility mapping table and details on how the shim is injected.
 
 ## Version & Failure Management
 
-As with `cordova-plugin-meteor-webapp`, the plugin keeps track of several version states:
+The plugin tracks version state across launches and automatically handles failures: if `startupDidComplete()` isn't called within 30 seconds of switching to a new version, the plugin reverts to the last known good version. A failed version is retried once, then permanently blacklisted if it fails again. The startup timer is paused while the app is backgrounded and resumes on foreground. When the app is updated through the App Store / Google Play, all downloaded versions are wiped so the new bundled assets take precedence.
 
-- **Current Version**: The version currently running
-- **Last Known Good Version**: The last version that successfully started
-- **Downloaded Version**: A new version ready to be applied
-- **Blacklisted Versions**: Versions that failed to start and should not be retried
-
-The plugin automatically handles failures:
-
-1. **Startup Timeout**: If `startupDidComplete()` isn't called within the timeout period, the app reverts to the last known good version
-2. **Crash Detection**: Cold start crashes are detected and trigger automatic rollback
-3. **Version Blacklisting**: Failed versions are blacklisted to prevent retry loops
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full version state machine, blacklisting logic, and startup timer behavior.
 
 ## Running Tests
 
