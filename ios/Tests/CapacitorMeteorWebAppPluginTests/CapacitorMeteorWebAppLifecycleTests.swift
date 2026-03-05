@@ -189,6 +189,60 @@ final class CapacitorMeteorWebAppLifecycleTests: XCTestCase {
         XCTAssertEqual(bridge.serverBasePaths.last, servingVersionDir.path)
     }
 
+    func testStartupTimer_pausesInBackgroundAndResumesOnForeground() throws {
+        let goodVersion = "v-good-bg"
+        let badVersion = "v-bad-bg"
+
+        let initial = try createBundle(version: goodVersion, directory: initialDir)
+        let manager = createManager(initial: initial)
+        let bridge = TestCapacitorBridge()
+        let app = CapacitorMeteorWebApp(
+            capacitorBridge: bridge,
+            configuration: configuration,
+            assetBundleManager: manager,
+            currentAssetBundle: initial,
+            servingDirectoryURL: servingDir,
+            startupTimeoutInterval: 0.2)
+
+        configuration.lastKnownGoodVersion = goodVersion
+
+        let badBundle = try createBundle(
+            version: badVersion,
+            directory: versionsDir.appendingPathComponent(badVersion),
+            parent: initial)
+        app.assetBundleManager(manager, didFinishDownloadingBundle: badBundle)
+        XCTAssertTrue(app.isUpdateAvailable())
+
+        let reloadDone = expectation(description: "reload callback")
+        var reloadError: Error?
+        app.reload { error in
+            reloadError = error
+            reloadDone.fulfill()
+        }
+        wait(for: [reloadDone], timeout: 5)
+
+        XCTAssertNil(reloadError)
+        XCTAssertEqual(app.getCurrentVersion(), badVersion)
+
+        // Pause startup timer and wait longer than timeout while backgrounded.
+        app.onApplicationDidEnterBackground()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+        XCTAssertEqual(
+            app.getCurrentVersion(), badVersion,
+            "Version should not be reverted while startup timer is paused in background")
+
+        // Resume timer; app should revert after remaining interval elapses.
+        app.onApplicationWillEnterForeground()
+
+        assertEventually("Expected app to revert to good version after foreground resume") {
+            app.getCurrentVersion() == goodVersion
+        }
+        assertEventually("Expected second reload after revert") {
+            bridge.reloadCount >= 2
+        }
+        XCTAssertTrue(configuration.versionsToRetry.contains(badVersion))
+    }
+
     func testStartupTimeout_revertsToLastKnownGoodVersionAndMarksRetry() throws {
         let goodVersion = "v-good"
         let badVersion = "v-bad"

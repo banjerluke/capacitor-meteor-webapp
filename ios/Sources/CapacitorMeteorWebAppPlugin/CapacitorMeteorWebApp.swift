@@ -74,6 +74,12 @@ public protocol CapacitorBridge: AnyObject {
     /// Track if we switched to a new version (for startup timer)
     private var switchedToNewVersion = false
 
+    /// Startup timer deadline while running in foreground
+    private var startupTimerDeadline: Date?
+
+    /// Remaining startup timeout while paused/backgrounded
+    private var startupTimerRemainingInterval: TimeInterval?
+
     /// Directory for serving organized bundles
     private var servingDirectoryURL: URL!
 
@@ -117,15 +123,7 @@ public protocol CapacitorBridge: AnyObject {
         // Setup startup timer
         setupStartupTimer()
 
-        // Register for background notification so we can stop the startup timer
-        // when the app is backgrounded (prevents spurious timeouts that would
-        // blacklist good versions). Mirrors Cordova's WebAppLocalServer.swift:120.
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(onApplicationDidEnterBackground),
-            name: UIApplication.didEnterBackgroundNotification,
-            object: nil
-        )
+        registerLifecycleObservers()
     }
 
     /// Test-only initializer that bypasses Bundle.main resource discovery and
@@ -153,6 +151,7 @@ public protocol CapacitorBridge: AnyObject {
         self.assetBundleManager.delegate = self
         setupStartupTimer()
         setupCurrentBundle()
+        registerLifecycleObservers()
     }
 
     deinit {
@@ -264,9 +263,29 @@ public protocol CapacitorBridge: AnyObject {
 
     private func setupStartupTimer() {
         startupTimer = Timer(queue: DispatchQueue.global(qos: .utility)) { [weak self] in
+            self?.startupTimerDeadline = nil
+            self?.startupTimerRemainingInterval = nil
             self?.logger.error("App startup timed out, reverting to last known good version")
             self?.revertToLastKnownGoodVersion()
         }
+    }
+
+    private func registerLifecycleObservers() {
+        // Stop startup timer when backgrounded to avoid false positives while suspended.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onApplicationDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+
+        // Resume any paused startup timer when returning to foreground.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onApplicationWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
     }
 
     private func updateConfigurationWithCurrentBundle() {
@@ -339,11 +358,26 @@ public protocol CapacitorBridge: AnyObject {
 
     private func startStartupTimer() {
         DispatchQueue.main.async {
-            // Don't start the startup timer if the app started up in the background
-            if UIApplication.shared.applicationState == .active {
-                self.logger.info("App startup timer started")
-                self.startupTimer?.start(withTimeInterval: self.startupTimeoutInterval)
+            let interval = self.startupTimerRemainingInterval ?? self.startupTimeoutInterval
+
+            // Don't start the startup timer while backgrounded, but preserve remaining time.
+            if UIApplication.shared.applicationState != .active {
+                self.startupTimerRemainingInterval = interval
+                self.startupTimerDeadline = nil
+                return
             }
+
+            if interval <= 0 {
+                self.startupTimerRemainingInterval = nil
+                self.startupTimerDeadline = nil
+                self.revertToLastKnownGoodVersion()
+                return
+            }
+
+            self.logger.info("App startup timer started")
+            self.startupTimerRemainingInterval = interval
+            self.startupTimerDeadline = Date().addingTimeInterval(interval)
+            self.startupTimer?.start(withTimeInterval: interval)
         }
     }
 
@@ -387,6 +421,8 @@ public protocol CapacitorBridge: AnyObject {
     public func startupDidComplete(completion: @escaping (Error?) -> Void) {
         logger.info("App startup completed for bundle \(self.currentAssetBundle.version)")
         startupTimer?.stop()
+        startupTimerDeadline = nil
+        startupTimerRemainingInterval = nil
 
         // If startup completed successfully, we consider a version good
         configuration.lastKnownGoodVersion = currentAssetBundle.version
@@ -605,9 +641,24 @@ public protocol CapacitorBridge: AnyObject {
     }
 
     @objc public func onApplicationDidEnterBackground() {
-        // Stop startup timer when going into the background, to avoid
-        // blacklisting a version just because the web view has been suspended
-        startupTimer?.stop()
+        DispatchQueue.main.async {
+            // Stop startup timer when backgrounded, but preserve remaining interval
+            // so we can resume when returning to foreground.
+            if let deadline = self.startupTimerDeadline {
+                self.startupTimerRemainingInterval = max(0, deadline.timeIntervalSinceNow)
+                self.startupTimerDeadline = nil
+                self.startupTimer?.stop()
+            }
+        }
+    }
+
+    @objc public func onApplicationWillEnterForeground() {
+        DispatchQueue.main.async {
+            guard self.startupTimerDeadline == nil, self.startupTimerRemainingInterval != nil else {
+                return
+            }
+            self.startStartupTimer()
+        }
     }
 
     // MARK: - Testing Helpers
