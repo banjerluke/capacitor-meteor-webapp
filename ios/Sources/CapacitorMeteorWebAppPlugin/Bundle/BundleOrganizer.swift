@@ -14,6 +14,11 @@ public class BundleOrganizer {
     private static let logger = os.Logger(
         subsystem: "com.meteor.webapp", category: "BundleOrganizer")
 
+    private struct PathValidationError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
     /// Organizes files in a bundle directory according to their URL mappings
     /// - Parameters:
     ///   - bundle: The asset bundle to organize
@@ -247,15 +252,83 @@ public class BundleOrganizer {
     /// - Returns: Array of validation errors (empty if valid)
     static func validateBundleOrganization(_ bundle: AssetBundle) -> [String] {
         var errors: [String] = []
+        var normalizedURLPaths = Set<String>()
 
         for asset in bundle.ownAssets {
-            // Check for path traversal
-            if asset.urlPath.contains("..") {
-                errors.append("Invalid URL path contains '..': \(asset.urlPath)")
+            let normalizedURLPath: String
+            do {
+                normalizedURLPath = try normalizeURLPath(asset.urlPath)
+            } catch {
+                errors.append(
+                    "Invalid urlPath for asset '\(asset.urlPath)': \(error.localizedDescription)")
+                continue
+            }
+
+            if !normalizedURLPaths.insert(normalizedURLPath).inserted {
+                errors.append("Duplicate normalized URL path: \(normalizedURLPath)")
+            }
+
+            do {
+                _ = try normalizeRelativeFilePath(asset.filePath)
+            } catch {
+                errors.append(
+                    "Invalid filePath for asset '\(asset.filePath)': \(error.localizedDescription)")
             }
         }
 
         return errors
+    }
+
+    private static func normalizeURLPath(_ rawURLPath: String) throws -> String {
+        if rawURLPath.isEmpty {
+            throw PathValidationError(message: "path is empty")
+        }
+
+        var path = URLPathByRemovingQueryString(rawURLPath)
+        if path.hasPrefix("/") {
+            path.removeFirst()
+        }
+
+        if path.isEmpty {
+            return "index.html"
+        }
+
+        return try normalizePath(path)
+    }
+
+    private static func normalizeRelativeFilePath(_ rawFilePath: String) throws -> String {
+        if rawFilePath.isEmpty {
+            throw PathValidationError(message: "path is empty")
+        }
+
+        if rawFilePath.hasPrefix("/") {
+            throw PathValidationError(message: "absolute paths are not allowed")
+        }
+
+        return try normalizePath(rawFilePath)
+    }
+
+    private static func normalizePath(_ path: String) throws -> String {
+        if path.contains("\\") {
+            throw PathValidationError(message: "backslashes are not allowed")
+        }
+
+        let segments = path.split(separator: "/", omittingEmptySubsequences: false)
+        var normalizedSegments: [Substring] = []
+
+        for segment in segments {
+            if segment.isEmpty {
+                throw PathValidationError(message: "empty path segments are not allowed")
+            }
+
+            if segment == "." || segment == ".." {
+                throw PathValidationError(message: "path traversal segments are not allowed")
+            }
+
+            normalizedSegments.append(segment)
+        }
+
+        return normalizedSegments.joined(separator: "/")
     }
 
     /// Removes organized files from a target directory

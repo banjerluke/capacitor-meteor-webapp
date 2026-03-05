@@ -67,6 +67,68 @@ final class BundleOrganizerTests: XCTestCase {
         XCTAssertTrue(errors.first?.contains("..") ?? false)
     }
 
+    func testValidateBundleDetectsDuplicateNormalizedURLPath() throws {
+        let builder = TestBundleBuilder(
+            version: "v-dup", appId: "test-app",
+            rootUrl: "http://example.com", compatibility: "ios-1")
+            .addAsset("app/main.js", type: "js", content: "console.log('ok');")
+
+        let bundleDir = tempDir.appendingPathComponent("bundle")
+        try builder.writeToDirectory(bundleDir)
+        let bundle = try AssetBundle(directoryURL: bundleDir)
+
+        let duplicateA = Asset(
+            bundle: bundle, filePath: "app/dup-a.js",
+            urlPath: "/app/dup.js?build=1", fileType: "js", cacheable: true)
+        let duplicateB = Asset(
+            bundle: bundle, filePath: "app/dup-b.js",
+            urlPath: "/app/dup.js?build=2", fileType: "js", cacheable: true)
+        bundle.addAsset(duplicateA)
+        bundle.addAsset(duplicateB)
+
+        let errors = BundleOrganizer.validateBundleOrganization(bundle)
+        XCTAssertTrue(
+            errors.contains(where: { $0.contains("Duplicate normalized URL path: app/dup.js") }),
+            "Should detect duplicate URL paths after query normalization")
+    }
+
+    func testValidateBundleDetectsInvalidFilePaths() throws {
+        let builder = TestBundleBuilder(
+            version: "v-filepath", appId: "test-app",
+            rootUrl: "http://example.com", compatibility: "ios-1")
+
+        let bundleDir = tempDir.appendingPathComponent("bundle")
+        try builder.writeToDirectory(bundleDir)
+        let bundle = try AssetBundle(directoryURL: bundleDir)
+
+        bundle.addAsset(Asset(
+            bundle: bundle, filePath: "../escape.js",
+            urlPath: "/bad-traversal.js", fileType: "js", cacheable: true))
+        bundle.addAsset(Asset(
+            bundle: bundle, filePath: "/absolute.js",
+            urlPath: "/bad-absolute.js", fileType: "js", cacheable: true))
+        bundle.addAsset(Asset(
+            bundle: bundle, filePath: "app\\windows.js",
+            urlPath: "/bad-backslash.js", fileType: "js", cacheable: true))
+        bundle.addAsset(Asset(
+            bundle: bundle, filePath: "app//double-slash.js",
+            urlPath: "/bad-empty-segment.js", fileType: "js", cacheable: true))
+
+        let errors = BundleOrganizer.validateBundleOrganization(bundle)
+        XCTAssertTrue(
+            errors.contains(where: { $0.contains("Invalid filePath for asset '../escape.js'") }),
+            "Should reject traversal in filePath")
+        XCTAssertTrue(
+            errors.contains(where: { $0.contains("Invalid filePath for asset '/absolute.js'") }),
+            "Should reject absolute filePath")
+        XCTAssertTrue(
+            errors.contains(where: { $0.contains("backslashes are not allowed") }),
+            "Should reject backslashes in filePath")
+        XCTAssertTrue(
+            errors.contains(where: { $0.contains("Invalid filePath for asset 'app//double-slash.js'") }),
+            "Should reject empty path segments in filePath")
+    }
+
     func testTargetURLMapping() throws {
         let builder = TestBundleBuilder(
             version: "v-url", appId: "test-app",
