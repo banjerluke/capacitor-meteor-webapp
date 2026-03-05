@@ -47,9 +47,6 @@ graph TB
     Downloader -->|"HTTP"| Server
     CoreImpl -->|"setServerBasePath"| Bridge
     Bridge --> WebView
-
-    style WebAppLocalServer fill:#f9f0ff,stroke:#7c3aed
-    style BundleOrg fill:#fef3c7,stroke:#d97706
 ```
 
 There are three layers:
@@ -151,34 +148,7 @@ Each entry has a `where` field -- the plugin only cares about entries where `whe
 
 ### Parent-Child Bundle Model
 
-When a new version is downloaded, most assets are usually unchanged. The plugin avoids re-downloading and re-storing them using a parent-child relationship:
-
-```mermaid
-graph LR
-    subgraph "Downloaded Bundle v2"
-        v2_changed["changed-file.js<br/>(downloaded)"]
-        v2_index["index.html<br/>(downloaded)"]
-    end
-
-    subgraph "Initial Bundle (in app package)"
-        v1_unchanged["unchanged-lib.js"]
-        v1_other["other-asset.css"]
-        v1_index["index.html"]
-    end
-
-    v2_changed -.->|"own asset"| v2_changed
-    v2_index -.->|"own asset"| v2_index
-    v1_unchanged -.->|"inherited from parent"| v1_unchanged
-    v1_other -.->|"inherited from parent"| v1_other
-
-    style v2_changed fill:#dcfce7,stroke:#16a34a
-    style v2_index fill:#dcfce7,stroke:#16a34a
-    style v1_unchanged fill:#e0e7ff,stroke:#4f46e5
-    style v1_other fill:#e0e7ff,stroke:#4f46e5
-    style v1_index fill:#f3f4f6,stroke:#9ca3af
-```
-
-The downloaded bundle only contains its **own** assets -- the ones that changed. When a bundle is organized for serving, the plugin also pulls in any parent assets that the child doesn't override. This means downloading a new version is fast and storage-efficient.
+When a new version is downloaded, most assets are usually unchanged. The plugin avoids re-downloading and re-storing them using a parent-child relationship. The downloaded bundle only contains its **own** assets -- the ones that changed. When a bundle is organized for serving, the plugin also pulls in any parent assets that the child doesn't override. This means downloading a new version is fast and storage-efficient.
 
 ### Bundle Organization
 
