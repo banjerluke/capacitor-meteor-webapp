@@ -305,15 +305,19 @@ public class CapacitorMeteorWebAppLifecycleTest {
     }
 
     @Test
-    public void pendingBundleWhoseFilesAreGone_isNotAvailableAndCanBeDownloadedAgain() throws Exception {
+    public void pendingBundleWhoseFilesAreGone_isNotAvailableAndIsDownloadedAgain() throws Exception {
         String pendingVersion = "v-app-gone";
+        File pendingDirectory = new File(versionsDirectory, pendingVersion);
+        URL baseUrl = server.url("/__cordova/").url();
+        server.setDispatcher(
+            new TestBundleBuilder(pendingVersion, appId, rootUrl, compatibility)
+                .addAsset("app/main.js", "js", "console.log('gone');")
+                .buildDispatcher()
+        );
 
         WebAppConfiguration configuration = createConfiguration();
         AssetBundle initialBundle = createBundle("v-initial");
         AssetBundleManager manager = createManager(configuration, initialBundle);
-        TestBundleBuilder builder = new TestBundleBuilder(pendingVersion, appId, rootUrl, compatibility)
-            .addAsset("app/main.js", "js", "console.log('gone');");
-        AssetBundle pendingBundle = downloadVersion(manager, builder);
 
         ExecutorService bundleSwitchExecutor = Executors.newSingleThreadExecutor();
         CapacitorMeteorWebApp app = new CapacitorMeteorWebApp(
@@ -327,13 +331,15 @@ public class CapacitorMeteorWebAppLifecycleTest {
             versionsDirectory,
             servingDirectory
         );
-        app.onFinishedDownloadingAssetBundle(pendingBundle);
-        awaitCondition("Pending bundle should become available", 5000, app::isUpdateAvailable);
+        manager.checkForUpdates(baseUrl);
+        awaitCondition("Pending bundle should become available", 10000, app::isUpdateAvailable);
 
-        assertTrue(FileOps.deleteRecursively(new File(versionsDirectory, pendingVersion)));
-
+        assertTrue(FileOps.deleteRecursively(pendingDirectory));
         assertFalse(app.isUpdateAvailable());
-        assertTrue(app.shouldDownloadBundleForManifest(new AssetManifest(builder.buildManifestJson())));
+
+        manager.checkForUpdates(baseUrl);
+        awaitCondition("The next update check should download the bundle again", 10000, app::isUpdateAvailable);
+        assertTrue(new File(pendingDirectory, "index.html").isFile());
 
         app.handleOnDestroy();
     }

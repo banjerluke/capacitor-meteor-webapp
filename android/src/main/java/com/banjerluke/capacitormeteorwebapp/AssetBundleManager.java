@@ -152,7 +152,7 @@ final class AssetBundleManager {
         }
 
         AssetBundle existingBundle = downloadedAssetBundlesByVersion.get(version);
-        if (existingBundle != null) {
+        if (existingBundle != null && existingBundle.isServable()) {
             notifyFinished(existingBundle);
             return;
         }
@@ -330,8 +330,10 @@ final class AssetBundleManager {
 
     private Asset cachedAssetForAsset(Asset asset) {
         for (AssetBundle bundle : downloadedAssetBundlesByVersion.values()) {
+            // A downloaded bundle stays listed when something else removes its files
             Asset cached = bundle.cachedAssetForUrlPath(asset.urlPath, asset.hash);
-            if (cached != null) {
+            File cachedFile = cached == null ? null : cached.getFile();
+            if (cachedFile != null && cachedFile.exists()) {
                 return cached;
             }
         }

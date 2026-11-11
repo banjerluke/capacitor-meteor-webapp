@@ -87,6 +87,28 @@ final class AssetBundleManagerCleanupTests: XCTestCase {
             "Kept version should remain")
     }
 
+    func testRemoveAllDownloadedAssetBundlesExceptFor_forgetsBundlesWhoseDirectoryIsGone() throws {
+        let gone = "v-cleanup-gone"
+        let old = "v-cleanup-old"
+        let current = "v-cleanup-current"
+
+        let initial = try createInitialBundle()
+        for version in [gone, old, current] {
+            _ = try createBundle(
+                version: version, directory: versionsDir.appendingPathComponent(version), parent: initial)
+        }
+        let manager = createManager(initial: initial)
+        let keep = try XCTUnwrap(manager.downloadedAssetBundleWithVersion(current))
+        try FileManager.default.removeItem(at: versionsDir.appendingPathComponent(gone))
+
+        XCTAssertNoThrow(try manager.removeAllDownloadedAssetBundlesExceptFor([keep]))
+
+        XCTAssertNil(manager.downloadedAssetBundleWithVersion(gone))
+        XCTAssertNil(manager.downloadedAssetBundleWithVersion(old))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: versionsDir.appendingPathComponent(old).path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: versionsDir.appendingPathComponent(current).path))
+    }
+
     func testDownloadedAssetBundleToBoot_fallsBackToLastKnownGoodThenInitial() throws {
         let good = "v-good"
         let lastDownloaded = "v-last-downloaded"

@@ -160,14 +160,17 @@ final class CapacitorMeteorWebAppLifecycleTests: XCTestCase {
         XCTAssertTrue(app.isUpdateAvailable())
     }
 
-    func testPendingBundleWhoseFilesAreGone_isNotAvailableAndCanBeDownloadedAgain() throws {
+    func testPendingBundleWhoseFilesAreGone_isNotAvailableAndIsDownloadedAgain() throws {
         let pendingVersion = "v-gone"
-        let pendingDir = versionsDir.appendingPathComponent(pendingVersion)
+        let pendingIndex = versionsDir.appendingPathComponent(pendingVersion)
+            .appendingPathComponent("index.html")
+        let baseURL = try XCTUnwrap(URL(string: "\(rootUrl)/__cordova/"))
+        MockURLProtocol.routes = TestBundleBuilder(
+            version: pendingVersion, appId: appId, rootUrl: rootUrl, compatibility: compatibility)
+            .addAsset("app/main.js", type: "js", content: "console.log('gone');")
+            .buildRoutes(basePath: "/__cordova")
 
         let initial = try createBundle(version: "v-initial", directory: initialDir)
-        let pendingBundle = try createBundle(version: pendingVersion, directory: pendingDir, parent: initial)
-        let manifest = try AssetManifest(fileURL: pendingDir.appendingPathComponent("program.json"))
-
         let manager = createManager(initial: initial)
         let app = CapacitorMeteorWebApp(
             capacitorBridge: nil,
@@ -175,12 +178,18 @@ final class CapacitorMeteorWebAppLifecycleTests: XCTestCase {
             assetBundleManager: manager,
             currentAssetBundle: initial,
             servingDirectoryURL: servingDir)
-        app.assetBundleManager(manager, didFinishDownloadingBundle: pendingBundle)
 
-        try FileManager.default.removeItem(at: pendingDir)
+        manager.checkForUpdatesWithBaseURL(baseURL)
+        assertEventually("Expected the bundle to download") { app.isUpdateAvailable() }
 
+        try FileManager.default.removeItem(at: pendingIndex.deletingLastPathComponent())
         XCTAssertFalse(app.isUpdateAvailable())
-        XCTAssertTrue(app.assetBundleManager(manager, shouldDownloadBundleForManifest: manifest))
+
+        manager.checkForUpdatesWithBaseURL(baseURL)
+        assertEventually("Expected the next update check to download the bundle again") {
+            app.isUpdateAvailable()
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pendingIndex.path))
     }
 
     func testDidFinishDownloadingBundle_setsPendingAndPostsUpdateAvailable() throws {

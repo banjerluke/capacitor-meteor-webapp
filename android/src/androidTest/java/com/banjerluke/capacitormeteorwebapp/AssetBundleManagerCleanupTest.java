@@ -219,6 +219,33 @@ public class AssetBundleManagerCleanupTest {
     }
 
     @Test
+    public void downloadSecondVersion_whileFirstVersionsFilesAreGone_downloadsSharedAssetAgain() throws Exception {
+        String v1 = "v-vanished-1";
+        String v2 = "v-vanished-2";
+        String sharedContent = "/* shared asset whose cached copy is gone */";
+
+        AssetBundle initialBundle = createInitialBundle();
+        WebAppConfiguration configuration = createConfiguration();
+        AssetBundleManager manager = new AssetBundleManager(context, configuration, versionsDirectory, initialBundle);
+        downloadVersion(manager, new TestBundleBuilder(v1, appId, rootUrl, compatibility)
+            .addAsset("app/shared.js", "js", sharedContent)
+            .addAsset("app/v1only.js", "js", "// v1 only"));
+
+        // Something other than the plugin removes the first version's files.
+        assertTrue(FileOps.deleteRecursively(new File(versionsDirectory, v1)));
+
+        downloadVersion(manager, new TestBundleBuilder(v2, appId, rootUrl, compatibility)
+            .addAsset("app/shared.js", "js", sharedContent)
+            .addAsset("app/v2only.js", "js", "// v2 only"));
+        assertTrue(
+            "shared.js should be downloaded again, not copied from the missing bundle",
+            new File(versionsDirectory, v2 + "/app/shared.js").isFile()
+        );
+
+        manager.shutdown();
+    }
+
+    @Test
     public void downloadedAssetBundleToBoot_fallsBackToLastKnownGoodThenInitial() throws Exception {
         String good = "v-boot-good";
         String lastDownloaded = "v-boot-last-downloaded";

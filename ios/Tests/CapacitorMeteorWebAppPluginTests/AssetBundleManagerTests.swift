@@ -301,6 +301,43 @@ final class AssetBundleManagerTests: XCTestCase {
             "shared.js should be accessible in v2 bundle (via parent chain or copy)")
     }
 
+    func testDownloadSecondVersion_whileFirstVersionsFilesAreGone_downloadsSharedAssetAgain() throws {
+        let v1 = "v-vanished-1"
+        let v2 = "v-vanished-2"
+        let sharedContent = "/* shared asset whose cached copy is gone */"
+
+        let initial = try createInitialBundle()
+        let manager = createManager(initial: initial)
+        let delegate = TestManagerDelegate()
+        manager.delegate = delegate
+
+        func download(_ version: String) {
+            MockURLProtocol.routes = TestBundleBuilder(
+                version: version, appId: appId, rootUrl: rootUrl, compatibility: compatibility)
+                .addAsset("app/shared.js", type: "js", content: sharedContent)
+                .addAsset("app/\(version).js", type: "js", content: "// \(version) only")
+                .buildRoutes(basePath: basePath)
+
+            let downloaded = XCTestExpectation(description: "\(version) download")
+            var failure: Error?
+            delegate.onFinish = { _ in downloaded.fulfill() }
+            delegate.onError = { error in failure = error; downloaded.fulfill() }
+            manager.checkForUpdatesWithBaseURL(baseURL)
+            wait(for: [downloaded], timeout: 10)
+            XCTAssertNil(failure, "\(version) error: \(String(describing: failure))")
+        }
+
+        download(v1)
+        // Something other than the plugin removes the first version's files.
+        try FileManager.default.removeItem(at: versionsDir.appendingPathComponent(v1))
+        download(v2)
+
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: versionsDir.appendingPathComponent("\(v2)/app/shared.js").path),
+            "shared.js should be downloaded again, not linked from the missing bundle")
+    }
+
     func testSameVersionOnServer_callbackNotInvoked() throws {
         let version = "v-no-update"
 
