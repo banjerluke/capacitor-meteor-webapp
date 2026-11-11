@@ -119,6 +119,18 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         return assetBundle
     }
 
+    /// The downloaded bundle a cold start boots: the last downloaded one, or the last known good
+    /// one when the last downloaded one is missing or unservable. Nil when neither can be served,
+    /// so the initial bundle boots.
+    func downloadedAssetBundleToBoot() -> AssetBundle? {
+        for case let version? in [configuration.lastDownloadedVersion, configuration.lastKnownGoodVersion] {
+            if let assetBundle = downloadedAssetBundleWithVersion(version), assetBundle.isServable {
+                return assetBundle
+            }
+        }
+        return nil
+    }
+
     func checkForUpdatesWithBaseURL(_ baseURL: URL) {
         let manifestURL = URL(string: "manifest.json", relativeTo: baseURL)!
 
@@ -358,11 +370,11 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         }
     }
 
-    /// Remove all downloaded asset bundles, except for one
-    func removeAllDownloadedAssetBundlesExceptFor(_ assetBundleToKeep: AssetBundle) throws {
+    /// Remove all downloaded asset bundles, except for the given ones
+    func removeAllDownloadedAssetBundlesExceptFor(_ assetBundlesToKeep: [AssetBundle]) throws {
         try queue.sync {
             for assetBundle in self.downloadedAssetBundlesByVersion.values {
-                if assetBundle !== assetBundleToKeep {
+                if !assetBundlesToKeep.contains(where: { $0 === assetBundle }) {
                     try self.fileManager.removeItem(at: assetBundle.directoryURL)
                     self.downloadedAssetBundlesByVersion.removeValue(forKey: assetBundle.version)
                 }

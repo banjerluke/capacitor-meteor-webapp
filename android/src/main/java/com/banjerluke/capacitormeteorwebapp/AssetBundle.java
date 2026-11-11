@@ -247,6 +247,16 @@ final class AssetBundle {
         }
     }
 
+    /**
+     * Whether the index.html that serving this bundle requires is still on disk. A downloaded
+     * bundle loses it when its directory is removed, while references to the bundle live on.
+     * A bundle read from the app package (the initial bundle) has no directory and is always servable.
+     */
+    boolean isServable() {
+        File index = indexFile.getFile();
+        return index == null || index.isFile();
+    }
+
     void didMoveToDirectoryAtUrl(File newDirectory) {
         this.directory = newDirectory;
         this.sourceDescription = newDirectory.getAbsolutePath();

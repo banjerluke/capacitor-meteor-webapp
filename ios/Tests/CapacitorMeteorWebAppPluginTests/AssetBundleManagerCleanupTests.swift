@@ -77,7 +77,7 @@ final class AssetBundleManagerCleanupTests: XCTestCase {
         let manager = createManager(initial: initial)
         let keep = try XCTUnwrap(manager.downloadedAssetBundleWithVersion(v2))
 
-        try manager.removeAllDownloadedAssetBundlesExceptFor(keep)
+        try manager.removeAllDownloadedAssetBundlesExceptFor([keep])
 
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: versionsDir.appendingPathComponent(v1).path),
@@ -85,6 +85,33 @@ final class AssetBundleManagerCleanupTests: XCTestCase {
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: versionsDir.appendingPathComponent(v2).path),
             "Kept version should remain")
+    }
+
+    func testDownloadedAssetBundleToBoot_fallsBackToLastKnownGoodThenInitial() throws {
+        let good = "v-good"
+        let lastDownloaded = "v-last-downloaded"
+
+        let initial = try createInitialBundle()
+        _ = try createBundle(version: good, directory: versionsDir.appendingPathComponent(good), parent: initial)
+        configuration.lastKnownGoodVersion = good
+        configuration.lastDownloadedVersion = lastDownloaded
+
+        XCTAssertEqual(
+            createManager(initial: initial).downloadedAssetBundleToBoot()?.version, good,
+            "A missing last downloaded bundle should fall back to the last known good one")
+
+        let lastDownloadedDir = versionsDir.appendingPathComponent(lastDownloaded)
+        _ = try createBundle(version: lastDownloaded, directory: lastDownloadedDir, parent: initial)
+        try FileManager.default.removeItem(at: lastDownloadedDir.appendingPathComponent("index.html"))
+        XCTAssertEqual(
+            createManager(initial: initial).downloadedAssetBundleToBoot()?.version, good,
+            "An unusable last downloaded bundle should fall back to the last known good one")
+
+        try FileManager.default.removeItem(
+            at: versionsDir.appendingPathComponent(good).appendingPathComponent("index.html"))
+        XCTAssertNil(
+            createManager(initial: initial).downloadedAssetBundleToBoot(),
+            "With neither bundle usable, the initial bundle should boot")
     }
 
     func testLoadDownloadedAssetBundles_discoversValidVersionFromDisk() throws {

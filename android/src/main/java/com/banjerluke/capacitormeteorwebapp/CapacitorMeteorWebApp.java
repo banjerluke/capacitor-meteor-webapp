@@ -47,7 +47,13 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     private AssetBundleManager assetBundleManager;
     private AssetBundle initialAssetBundle;
     private AssetBundle currentAssetBundle;
-    private AssetBundle pendingAssetBundle;
+
+    /**
+     * A downloaded bundle stays pending until the app switches to it. A page that reloads without
+     * switching (the WebView's renderer was discarded, say) leaves it pending. Read it through
+     * {@link #pendingAssetBundle()}, which sees null once the bundle's files are gone.
+     */
+    private AssetBundle storedPendingAssetBundle;
 
     private File versionsDirectory;
     private File servingDirectory;
@@ -94,7 +100,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         this.assetBundleManager = assetBundleManager;
         this.initialAssetBundle = initialAssetBundle;
         this.currentAssetBundle = currentAssetBundle;
-        this.pendingAssetBundle = null;
+        this.storedPendingAssetBundle = null;
         this.versionsDirectory = versionsDirectory;
         this.servingDirectory = servingDirectory;
         this.assetBundleManager.setCallback(this);
@@ -138,7 +144,14 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
 
         if (currentAssetBundle != null) {
             configuration.setLastKnownGoodVersion(currentAssetBundle.getVersion());
-            assetBundleManager.removeAllDownloadedAssetBundlesExceptForVersion(currentAssetBundle.getVersion());
+            // Clean up the bundles this startup supersedes. A pending bundle stays: a page that
+            // reloaded without switching reports startup on the current bundle while the
+            // downloaded one still waits to be switched to.
+            AssetBundle pending = pendingAssetBundle();
+            assetBundleManager.removeAllDownloadedAssetBundlesExceptForVersions(
+                currentAssetBundle.getVersion(),
+                pending == null ? null : pending.getVersion()
+            );
         }
 
         callback.onComplete(null);
@@ -152,7 +165,16 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     }
 
     boolean isUpdateAvailable() {
-        return pendingAssetBundle != null;
+        return pendingAssetBundle() != null;
+    }
+
+    /**
+     * The pending bundle, or null once its files are gone, so the plugin never offers or switches
+     * to a bundle it cannot serve, and downloads it again when asked.
+     */
+    private AssetBundle pendingAssetBundle() {
+        AssetBundle pending = storedPendingAssetBundle;
+        return pending != null && pending.isServable() ? pending : null;
     }
 
     void reload(ResultCallback callback) {
@@ -220,23 +242,20 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         assetBundleManager.setCallback(this);
 
         selectCurrentAssetBundle();
-        pendingAssetBundle = null;
+        storedPendingAssetBundle = null;
         setupCurrentBundle();
     }
 
     private void selectCurrentAssetBundle() {
-        String lastDownloadedVersion = configuration.getLastDownloadedVersion();
-        if (lastDownloadedVersion != null) {
-            AssetBundle downloadedBundle = assetBundleManager.downloadedAssetBundleWithVersion(lastDownloadedVersion);
-            if (downloadedBundle != null) {
-                setCurrentAssetBundle(downloadedBundle);
+        AssetBundle downloadedBundle = assetBundleManager.downloadedAssetBundleToBoot();
+        if (downloadedBundle != null) {
+            setCurrentAssetBundle(downloadedBundle);
 
-                String lastKnownGood = configuration.getLastKnownGoodVersion();
-                if (!lastDownloadedVersion.equals(lastKnownGood)) {
-                    startStartupTimer();
-                }
-                return;
+            String lastKnownGood = configuration.getLastKnownGoodVersion();
+            if (!downloadedBundle.getVersion().equals(lastKnownGood)) {
+                startStartupTimer();
             }
+            return;
         }
 
         setCurrentAssetBundle(initialAssetBundle);
@@ -277,14 +296,14 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     }
 
     private void performReload() throws WebAppError {
-        if (pendingAssetBundle == null) {
+        AssetBundle targetBundle = pendingAssetBundle();
+        if (targetBundle == null) {
             throw new WebAppError(
                 WebAppError.Type.NO_PENDING_VERSION,
                 "No pending version available to reload"
             );
         }
 
-        AssetBundle targetBundle = pendingAssetBundle;
         File bundleServingDirectory = new File(servingDirectory, targetBundle.getVersion());
         if (bundleServingDirectory.exists()) {
             FileOps.deleteRecursively(bundleServingDirectory);
@@ -293,7 +312,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
         BundleOrganizer.organizeBundle(targetBundle, bundleServingDirectory);
 
         setCurrentAssetBundle(targetBundle);
-        pendingAssetBundle = null;
+        storedPendingAssetBundle = null;
         setServerBasePath(bundleServingDirectory.getAbsolutePath());
         startStartupTimer();
     }
@@ -309,7 +328,10 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
             AssetBundle fallbackBundle = null;
             String lastKnownGoodVersion = configuration.getLastKnownGoodVersion();
             if (lastKnownGoodVersion != null) {
-                fallbackBundle = assetBundleManager.downloadedAssetBundleWithVersion(lastKnownGoodVersion);
+                AssetBundle lastKnownGoodBundle = assetBundleManager.downloadedAssetBundleWithVersion(lastKnownGoodVersion);
+                if (lastKnownGoodBundle != null && lastKnownGoodBundle.isServable()) {
+                    fallbackBundle = lastKnownGoodBundle;
+                }
             }
 
             if (fallbackBundle == null && currentAssetBundle != initialAssetBundle) {
@@ -322,7 +344,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
             }
 
             try {
-                pendingAssetBundle = fallbackBundle;
+                storedPendingAssetBundle = fallbackBundle;
                 forceReload();
             } catch (Throwable cause) {
                 notifyError(errorMessageForThrowable(cause));
@@ -331,9 +353,10 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     }
 
     private void forceReload() throws WebAppError {
-        if (pendingAssetBundle != null) {
-            setCurrentAssetBundle(pendingAssetBundle);
-            pendingAssetBundle = null;
+        AssetBundle pending = pendingAssetBundle();
+        if (pending != null) {
+            setCurrentAssetBundle(pending);
+            storedPendingAssetBundle = null;
         }
 
         setupCurrentBundle();
@@ -459,7 +482,8 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
             return false;
         }
 
-        if (pendingAssetBundle != null && pendingAssetBundle.getVersion().equals(manifest.version)) {
+        AssetBundle pending = pendingAssetBundle();
+        if (pending != null && pending.getVersion().equals(manifest.version)) {
             return false;
         }
 
@@ -484,7 +508,7 @@ final class CapacitorMeteorWebApp implements AssetBundleManager.Callback {
     public void onFinishedDownloadingAssetBundle(AssetBundle assetBundle) {
         bundleSwitchExecutor.execute(() -> {
             configuration.setLastDownloadedVersion(assetBundle.getVersion());
-            pendingAssetBundle = assetBundle;
+            storedPendingAssetBundle = assetBundle;
             notifyUpdateAvailable(assetBundle.getVersion());
         });
     }

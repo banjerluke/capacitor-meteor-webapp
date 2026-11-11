@@ -115,7 +115,7 @@ sequenceDiagram
 
 **6. Activate.** When `reload()` is called, the plugin organizes the pending bundle into a serving directory, points Capacitor's WebView at it, and reloads. A startup timer begins.
 
-**7. Confirm or roll back.** Your app must call `startupDidComplete()` before the timer expires (30 seconds by default). If it does, the version is marked as "last known good" and old bundles are cleaned up. If it doesn't -- the plugin rolls back automatically.
+**7. Confirm or roll back.** Your app must call `startupDidComplete()` before the timer expires (30 seconds by default). If it does, the version is marked as "last known good" and every downloaded bundle except the current and the pending one is cleaned up. If it doesn't -- the plugin rolls back automatically.
 
 ## The Asset Bundle System
 
@@ -224,10 +224,16 @@ All version state is persisted across app launches (iOS: `UserDefaults`, Android
 | Key | Purpose |
 |---|---|
 | `lastSeenInitialVersion` | Detects app store updates -- if the bundled version changes, all downloaded versions and state are wiped |
-| `lastDownloadedVersion` | The version to boot into on next cold start |
+| `lastDownloadedVersion` | The version to boot into on next cold start. If its bundle is missing or unusable, the last known good version boots, and the initial bundle only after that |
 | `lastKnownGoodVersion` | The last version where `startupDidComplete()` was called |
 | `blacklistedVersions` | Versions that failed startup twice and should never be downloaded again |
 | `versionsToRetry` | Versions that failed once -- they get one more chance before blacklisting |
+
+### Pending Bundles and Page Reloads
+
+A downloaded bundle stays pending until `reload()` switches to it. A page can also reload without switching -- iOS discards the WebView's content process while the app is in the background, or the app reloads the page itself -- and the new page still runs the current bundle. When that page calls `startupDidComplete()`, the pending bundle is kept: cleanup removes only bundles that are neither current nor pending. The plugin does not fire `updateAvailable` again for the new page; a page that wants the pending bundle asks `isUpdateAvailable()` and calls `reload()`.
+
+The plugin never reports a pending bundle whose files are gone: `isUpdateAvailable()` answers false, `reload()` rejects as if nothing were pending, and the next update check downloads the bundle again.
 
 ### The Startup Timer
 

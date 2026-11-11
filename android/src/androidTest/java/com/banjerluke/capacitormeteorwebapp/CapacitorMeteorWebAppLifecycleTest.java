@@ -262,6 +262,83 @@ public class CapacitorMeteorWebAppLifecycleTest {
     }
 
     @Test
+    public void startupDidComplete_withoutSwitch_keepsPendingBundle() throws Exception {
+        String old = "v-app-old";
+        String current = "v-app-current";
+        String pending = "v-app-pending-kept";
+
+        WebAppConfiguration configuration = createConfiguration();
+        AssetBundle initialBundle = createBundle("v-initial");
+        AssetBundleManager manager = createManager(configuration, initialBundle);
+        for (String version : new String[] { old, current, pending }) {
+            downloadVersion(manager, new TestBundleBuilder(version, appId, rootUrl, compatibility)
+                .addAsset("app/main.js", "js", "console.log('" + version + "');"));
+        }
+
+        // The page reloaded on the current bundle while another was pending, and reports startup.
+        ExecutorService bundleSwitchExecutor = Executors.newSingleThreadExecutor();
+        CapacitorMeteorWebApp app = new CapacitorMeteorWebApp(
+            context,
+            new Handler(Looper.getMainLooper()),
+            bundleSwitchExecutor,
+            configuration,
+            manager,
+            initialBundle,
+            manager.downloadedAssetBundleWithVersion(current),
+            versionsDirectory,
+            servingDirectory
+        );
+        app.onFinishedDownloadingAssetBundle(manager.downloadedAssetBundleWithVersion(pending));
+        awaitCondition("Pending bundle should become available", 5000, app::isUpdateAvailable);
+
+        CountDownLatch callbackLatch = new CountDownLatch(1);
+        app.startupDidComplete(error -> callbackLatch.countDown());
+        assertTrue("startupDidComplete callback timed out", callbackLatch.await(5, TimeUnit.SECONDS));
+        waitForExecutorDrain(manager);
+
+        assertFalse(new File(versionsDirectory, old).exists());
+        assertTrue(new File(versionsDirectory, current).exists());
+        assertTrue("Startup without a switch should keep the pending bundle", new File(versionsDirectory, pending).exists());
+        assertTrue(app.isUpdateAvailable());
+
+        app.handleOnDestroy();
+    }
+
+    @Test
+    public void pendingBundleWhoseFilesAreGone_isNotAvailableAndCanBeDownloadedAgain() throws Exception {
+        String pendingVersion = "v-app-gone";
+
+        WebAppConfiguration configuration = createConfiguration();
+        AssetBundle initialBundle = createBundle("v-initial");
+        AssetBundleManager manager = createManager(configuration, initialBundle);
+        TestBundleBuilder builder = new TestBundleBuilder(pendingVersion, appId, rootUrl, compatibility)
+            .addAsset("app/main.js", "js", "console.log('gone');");
+        AssetBundle pendingBundle = downloadVersion(manager, builder);
+
+        ExecutorService bundleSwitchExecutor = Executors.newSingleThreadExecutor();
+        CapacitorMeteorWebApp app = new CapacitorMeteorWebApp(
+            context,
+            new Handler(Looper.getMainLooper()),
+            bundleSwitchExecutor,
+            configuration,
+            manager,
+            initialBundle,
+            initialBundle,
+            versionsDirectory,
+            servingDirectory
+        );
+        app.onFinishedDownloadingAssetBundle(pendingBundle);
+        awaitCondition("Pending bundle should become available", 5000, app::isUpdateAvailable);
+
+        assertTrue(FileOps.deleteRecursively(new File(versionsDirectory, pendingVersion)));
+
+        assertFalse(app.isUpdateAvailable());
+        assertTrue(app.shouldDownloadBundleForManifest(new AssetManifest(builder.buildManifestJson())));
+
+        app.handleOnDestroy();
+    }
+
+    @Test
     public void onFinishedDownloadingAssetBundle_setsPendingAndEmitsUpdateEvent() throws Exception {
         String pendingVersion = "v-app-pending";
 
