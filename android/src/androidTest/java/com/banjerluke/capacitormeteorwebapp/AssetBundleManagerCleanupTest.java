@@ -170,7 +170,7 @@ public class AssetBundleManagerCleanupTest {
         assertTrue("v2 directory should exist", v2Dir.exists());
 
         // Remove all except v2, then drain executor to ensure removal completes
-        manager.removeAllDownloadedAssetBundlesExceptForVersion(v2);
+        manager.removeAllDownloadedAssetBundlesExceptForVersions(v2);
         waitForExecutorDrain(manager);
 
         assertFalse("v1 directory should be deleted", v1Dir.exists());
@@ -200,7 +200,7 @@ public class AssetBundleManagerCleanupTest {
         downloadVersion(manager, v2Builder);
 
         // Remove all except v1, then drain executor to ensure removal completes
-        manager.removeAllDownloadedAssetBundlesExceptForVersion(v1);
+        manager.removeAllDownloadedAssetBundlesExceptForVersions(v1);
         waitForExecutorDrain(manager);
 
         File v1Dir = new File(versionsDirectory, v1);
@@ -216,6 +216,74 @@ public class AssetBundleManagerCleanupTest {
         assertTrue("style.css should exist in kept version", styleCss.exists());
 
         manager.shutdown();
+    }
+
+    @Test
+    public void downloadSecondVersion_whileFirstVersionsFilesAreGone_downloadsSharedAssetAgain() throws Exception {
+        String v1 = "v-vanished-1";
+        String v2 = "v-vanished-2";
+        String sharedContent = "/* shared asset whose cached copy is gone */";
+
+        AssetBundle initialBundle = createInitialBundle();
+        WebAppConfiguration configuration = createConfiguration();
+        AssetBundleManager manager = new AssetBundleManager(context, configuration, versionsDirectory, initialBundle);
+        downloadVersion(manager, new TestBundleBuilder(v1, appId, rootUrl, compatibility)
+            .addAsset("app/shared.js", "js", sharedContent)
+            .addAsset("app/v1only.js", "js", "// v1 only"));
+
+        // Something other than the plugin removes the first version's files.
+        assertTrue(FileOps.deleteRecursively(new File(versionsDirectory, v1)));
+
+        downloadVersion(manager, new TestBundleBuilder(v2, appId, rootUrl, compatibility)
+            .addAsset("app/shared.js", "js", sharedContent)
+            .addAsset("app/v2only.js", "js", "// v2 only"));
+        assertTrue(
+            "shared.js should be downloaded again, not copied from the missing bundle",
+            new File(versionsDirectory, v2 + "/app/shared.js").isFile()
+        );
+
+        manager.shutdown();
+    }
+
+    @Test
+    public void downloadedAssetBundleToBoot_fallsBackToLastKnownGoodThenInitial() throws Exception {
+        String good = "v-boot-good";
+        String lastDownloaded = "v-boot-last-downloaded";
+
+        AssetBundle initialBundle = createInitialBundle();
+        WebAppConfiguration configuration = createConfiguration();
+        AssetBundleManager downloader = new AssetBundleManager(context, configuration, versionsDirectory, initialBundle);
+        downloadVersion(downloader, new TestBundleBuilder(good, appId, rootUrl, compatibility)
+            .addAsset("app/main.js", "js", "console.log('good');"));
+        configuration.setLastKnownGoodVersion(good);
+        configuration.setLastDownloadedVersion(lastDownloaded);
+
+        assertEquals(
+            "A missing last downloaded bundle should fall back to the last known good one",
+            good,
+            versionToBoot(configuration, initialBundle)
+        );
+
+        downloadVersion(downloader, new TestBundleBuilder(lastDownloaded, appId, rootUrl, compatibility)
+            .addAsset("app/main.js", "js", "console.log('last downloaded');"));
+        downloader.shutdown();
+        assertTrue(new File(new File(versionsDirectory, lastDownloaded), "index.html").delete());
+        assertEquals(
+            "An unusable last downloaded bundle should fall back to the last known good one",
+            good,
+            versionToBoot(configuration, initialBundle)
+        );
+
+        assertTrue(new File(new File(versionsDirectory, good), "index.html").delete());
+        assertNull("With neither bundle usable, the initial bundle should boot", versionToBoot(configuration, initialBundle));
+    }
+
+    /** Which version a cold start with these files on disk would boot; null means the initial bundle. */
+    private String versionToBoot(WebAppConfiguration configuration, AssetBundle initialBundle) throws Exception {
+        AssetBundleManager manager = new AssetBundleManager(context, configuration, versionsDirectory, initialBundle);
+        AssetBundle bundle = manager.downloadedAssetBundleToBoot();
+        manager.shutdown();
+        return bundle == null ? null : bundle.getVersion();
     }
 
     @Test

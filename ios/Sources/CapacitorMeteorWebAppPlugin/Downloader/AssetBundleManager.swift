@@ -119,6 +119,18 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         return assetBundle
     }
 
+    /// The downloaded bundle a cold start boots: the last downloaded one, or the last known good
+    /// one when the last downloaded one is missing or unservable. Nil when neither can be served,
+    /// so the initial bundle boots.
+    func downloadedAssetBundleToBoot() -> AssetBundle? {
+        for case let version? in [configuration.lastDownloadedVersion, configuration.lastKnownGoodVersion] {
+            if let assetBundle = downloadedAssetBundleWithVersion(version), assetBundle.isServable {
+                return assetBundle
+            }
+        }
+        return nil
+    }
+
     func checkForUpdatesWithBaseURL(_ baseURL: URL) {
         let manifestURL = URL(string: "manifest.json", relativeTo: baseURL)!
 
@@ -180,8 +192,9 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
                     }
 
                     // If there is a previously downloaded asset bundle with the requested
-                    // version, use that
-                    if let assetBundle = self.downloadedAssetBundlesByVersion[version] {
+                    // version whose files are still there, use that
+                    if let assetBundle = self.downloadedAssetBundlesByVersion[version],
+                       assetBundle.isServable {
                         self.didFinishDownloadingAssetBundle(assetBundle)
                         return
                     }
@@ -322,7 +335,9 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
 
     private func cachedAssetForAsset(_ asset: Asset) -> Asset? {
         for assetBundle in downloadedAssetBundlesByVersion.values {
-            if let cachedAsset = assetBundle.cachedAssetForURLPath(asset.urlPath, hash: asset.hash) {
+            // A downloaded bundle stays listed when something else removes its files
+            if let cachedAsset = assetBundle.cachedAssetForURLPath(asset.urlPath, hash: asset.hash),
+               fileManager.fileExists(atPath: cachedAsset.fileURL.path) {
                 return cachedAsset
             }
         }
@@ -358,12 +373,15 @@ final class AssetBundleManager: AssetBundleDownloaderDelegate {
         }
     }
 
-    /// Remove all downloaded asset bundles, except for one
-    func removeAllDownloadedAssetBundlesExceptFor(_ assetBundleToKeep: AssetBundle) throws {
+    /// Remove all downloaded asset bundles, except for the given ones. A bundle whose directory
+    /// is already gone is only forgotten.
+    func removeAllDownloadedAssetBundlesExceptFor(_ assetBundlesToKeep: [AssetBundle]) throws {
         try queue.sync {
             for assetBundle in self.downloadedAssetBundlesByVersion.values {
-                if assetBundle !== assetBundleToKeep {
-                    try self.fileManager.removeItem(at: assetBundle.directoryURL)
+                if !assetBundlesToKeep.contains(where: { $0 === assetBundle }) {
+                    if self.fileManager.fileExists(atPath: assetBundle.directoryURL.path) {
+                        try self.fileManager.removeItem(at: assetBundle.directoryURL)
+                    }
                     self.downloadedAssetBundlesByVersion.removeValue(forKey: assetBundle.version)
                 }
             }

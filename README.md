@@ -108,7 +108,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full compatibility mapping table 
 
 ## Version & Failure Management
 
-The plugin tracks version state across launches and automatically handles failures: if `startupDidComplete()` isn't called within 30 seconds of switching to a new version, the plugin reverts to the last known good version. A failed version is retried once, then permanently blacklisted if it fails again. The startup timer is paused while the app is backgrounded and resumes on foreground. When the app is updated through the App Store / Google Play, all downloaded versions are wiped so the new bundled assets take precedence.
+The plugin tracks version state across launches and automatically handles failures: if `startupDidComplete()` isn't called within 30 seconds of switching to a new version, the plugin reverts to the last known good version. A failed version is retried once, then permanently blacklisted if it fails again. A page that reloads without switching versions (for example after iOS discards the WebView's content process) leaves a downloaded update pending; ask `isUpdateAvailable()` at boot to apply it. The startup timer is paused while the app is backgrounded and resumes on foreground. When the app is updated through the App Store / Google Play, all downloaded versions are wiped so the new bundled assets take precedence.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full version state machine, blacklisting logic, and startup timer behavior.
 

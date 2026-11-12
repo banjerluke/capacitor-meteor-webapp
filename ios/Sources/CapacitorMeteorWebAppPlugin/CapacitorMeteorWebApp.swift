@@ -45,10 +45,19 @@ public protocol CapacitorBridge: AnyObject {
         }
     }
 
-    /// Downloaded asset bundles are considered pending until the next page reload
+    /// Downloaded asset bundles are considered pending until the app switches to them,
     /// because we don't want the app to end up in an inconsistent state by
-    /// loading assets from different bundles.
-    private var pendingAssetBundle: AssetBundle?
+    /// loading assets from different bundles. A page that reloads without switching
+    /// (the web view's content process was discarded, say) leaves the bundle pending.
+    ///
+    /// Reads see nil once the bundle's files are gone, so the plugin never offers or
+    /// switches to a bundle it cannot serve, and downloads it again when asked.
+    private var pendingAssetBundle: AssetBundle? {
+        get { storedPendingAssetBundle.flatMap { $0.isServable ? $0 : nil } }
+        set { storedPendingAssetBundle = newValue }
+    }
+
+    private var storedPendingAssetBundle: AssetBundle?
 
     /// Timer used to wait for startup to complete after a reload
     private var startupTimer: Timer?
@@ -159,22 +168,27 @@ public protocol CapacitorBridge: AnyObject {
     }
 
     private func selectCurrentAssetBundle(initialAssetBundle: AssetBundle) {
-        // If a last downloaded version has been set and the asset bundle exists,
-        // we set it as the current asset bundle
+        // Boot the last downloaded bundle, or the last known good one if the last downloaded
+        // one is missing or unusable, or else the initial bundle
+        let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleToBoot()
+
         if let lastDownloadedVersion = configuration.lastDownloadedVersion,
-           let downloadedAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
-            lastDownloadedVersion) {
-            logger.info("📦 Using downloaded asset bundle version: \(lastDownloadedVersion)")
+           downloadedAssetBundle?.version != lastDownloadedVersion {
+            let fallback = downloadedAssetBundle.map { "last known good version \($0.version)" }
+                ?? "initial bundle"
+            logger.warning(
+                "⚠️ Downloaded version \(lastDownloadedVersion) was configured but bundle not found or unusable, falling back to \(fallback)"
+            )
+        }
+
+        if let downloadedAssetBundle = downloadedAssetBundle {
+            let version = downloadedAssetBundle.version
+            logger.info("📦 Using downloaded asset bundle version: \(version)")
             currentAssetBundle = downloadedAssetBundle
-            if configuration.lastKnownGoodVersion != lastDownloadedVersion {
+            if configuration.lastKnownGoodVersion != version {
                 startStartupTimer()
             }
         } else {
-            if let lastDownloadedVersion = configuration.lastDownloadedVersion {
-                logger.warning(
-                    "⚠️ Downloaded version \(lastDownloadedVersion) was configured but bundle not found, falling back to initial bundle"
-                )
-            }
             logger.info("📦 Using initial asset bundle version: \(initialAssetBundle.version)")
             currentAssetBundle = initialAssetBundle
         }
@@ -427,12 +441,15 @@ public protocol CapacitorBridge: AnyObject {
         // If startup completed successfully, we consider a version good
         configuration.lastKnownGoodVersion = currentAssetBundle.version
 
-        // Clean up old asset bundles in the background
+        // Clean up the bundles this startup supersedes in the background. A pending bundle
+        // stays: a page that reloaded without switching reports startup on the current
+        // bundle while the downloaded one still waits to be switched to.
+        let assetBundlesToKeep = [currentAssetBundle, pendingAssetBundle].compactMap { $0 }
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
             do {
                 try self.assetBundleManager.removeAllDownloadedAssetBundlesExceptFor(
-                    self.currentAssetBundle)
+                    assetBundlesToKeep)
             } catch {
                 self.logger.error(
                     "Could not remove unused asset bundles: \(error.localizedDescription)")
@@ -582,7 +599,8 @@ public protocol CapacitorBridge: AnyObject {
         // If there is a last known good version and we can load the bundle, revert to it
         if let lastKnownGoodVersion = configuration.lastKnownGoodVersion,
            let lastKnownGoodAssetBundle = assetBundleManager.downloadedAssetBundleWithVersion(
-            lastKnownGoodVersion) {
+            lastKnownGoodVersion),
+           lastKnownGoodAssetBundle.isServable {
             pendingAssetBundle = lastKnownGoodAssetBundle
             // Else, revert to the initial asset bundle, unless that is what we are currently serving
         } else if currentAssetBundle.version != assetBundleManager.initialAssetBundle.version {

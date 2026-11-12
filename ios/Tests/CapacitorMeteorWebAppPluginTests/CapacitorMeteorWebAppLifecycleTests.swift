@@ -121,6 +121,77 @@ final class CapacitorMeteorWebAppLifecycleTests: XCTestCase {
         }
     }
 
+    func testStartupDidComplete_withoutSwitch_keepsPendingBundle() throws {
+        let old = "v-old"
+        let current = "v-current"
+        let pending = "v-pending"
+
+        let initial = try createBundle(version: "v-initial", directory: initialDir)
+        for version in [old, current, pending] {
+            _ = try createBundle(
+                version: version, directory: versionsDir.appendingPathComponent(version), parent: initial)
+        }
+
+        // The page reloaded on the current bundle while another was pending, and reports startup.
+        let manager = createManager(initial: initial)
+        let app = CapacitorMeteorWebApp(
+            capacitorBridge: nil,
+            configuration: configuration,
+            assetBundleManager: manager,
+            currentAssetBundle: try XCTUnwrap(manager.downloadedAssetBundleWithVersion(current)),
+            pendingAssetBundle: try XCTUnwrap(manager.downloadedAssetBundleWithVersion(pending)),
+            servingDirectoryURL: servingDir)
+
+        let callback = expectation(description: "startup callback")
+        app.startupDidComplete { _ in callback.fulfill() }
+        wait(for: [callback], timeout: 5)
+
+        assertEventually("Expected the superseded bundle to be removed") {
+            !FileManager.default.fileExists(atPath: self.versionsDir.appendingPathComponent(old).path)
+        }
+        // Waits out the rest of the cleanup, which holds the manager's queue.
+        _ = manager.downloadedAssetBundleWithVersion(pending)
+
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: versionsDir.appendingPathComponent(current).path))
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: versionsDir.appendingPathComponent(pending).path),
+            "Startup without a switch should keep the pending bundle")
+        XCTAssertTrue(app.isUpdateAvailable())
+    }
+
+    func testPendingBundleWhoseFilesAreGone_isNotAvailableAndIsDownloadedAgain() throws {
+        let pendingVersion = "v-gone"
+        let pendingIndex = versionsDir.appendingPathComponent(pendingVersion)
+            .appendingPathComponent("index.html")
+        let baseURL = try XCTUnwrap(URL(string: "\(rootUrl)/__cordova/"))
+        MockURLProtocol.routes = TestBundleBuilder(
+            version: pendingVersion, appId: appId, rootUrl: rootUrl, compatibility: compatibility)
+            .addAsset("app/main.js", type: "js", content: "console.log('gone');")
+            .buildRoutes(basePath: "/__cordova")
+
+        let initial = try createBundle(version: "v-initial", directory: initialDir)
+        let manager = createManager(initial: initial)
+        let app = CapacitorMeteorWebApp(
+            capacitorBridge: nil,
+            configuration: configuration,
+            assetBundleManager: manager,
+            currentAssetBundle: initial,
+            servingDirectoryURL: servingDir)
+
+        manager.checkForUpdatesWithBaseURL(baseURL)
+        assertEventually("Expected the bundle to download") { app.isUpdateAvailable() }
+
+        try FileManager.default.removeItem(at: pendingIndex.deletingLastPathComponent())
+        XCTAssertFalse(app.isUpdateAvailable())
+
+        manager.checkForUpdatesWithBaseURL(baseURL)
+        assertEventually("Expected the next update check to download the bundle again") {
+            app.isUpdateAvailable()
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pendingIndex.path))
+    }
+
     func testDidFinishDownloadingBundle_setsPendingAndPostsUpdateAvailable() throws {
         let pendingVersion = "v-pending"
 

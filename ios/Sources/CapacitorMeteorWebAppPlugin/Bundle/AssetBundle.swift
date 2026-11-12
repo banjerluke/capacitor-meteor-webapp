@@ -167,6 +167,13 @@ final class AssetBundle {
         return runtimeConfig?.rootURL
     }
 
+    /// Whether the index.html that serving this bundle requires is still on disk. A downloaded
+    /// bundle loses it when its directory is removed, while references to the bundle live on.
+    var isServable: Bool {
+        guard let indexFile = indexFile else { return false }
+        return FileManager.default.fileExists(atPath: indexFile.fileURL.path)
+    }
+
     func didMoveToDirectoryAtURL(_ directoryURL: URL) {
         self.directoryURL = directoryURL
     }

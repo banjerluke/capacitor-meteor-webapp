@@ -10,7 +10,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,6 +67,21 @@ final class AssetBundleManager {
         return downloadedAssetBundlesByVersion.get(version);
     }
 
+    /**
+     * The downloaded bundle a cold start boots: the last downloaded one, or the last known good one
+     * when the last downloaded one is missing or unservable. Null when neither can be served, so the
+     * initial bundle boots.
+     */
+    AssetBundle downloadedAssetBundleToBoot() {
+        for (String version : new String[] { configuration.getLastDownloadedVersion(), configuration.getLastKnownGoodVersion() }) {
+            AssetBundle assetBundle = version == null ? null : downloadedAssetBundleWithVersion(version);
+            if (assetBundle != null && assetBundle.isServable()) {
+                return assetBundle;
+            }
+        }
+        return null;
+    }
+
     boolean isDownloading() {
         return assetBundleDownloader != null;
     }
@@ -73,11 +90,12 @@ final class AssetBundleManager {
         executor.execute(() -> checkForUpdatesInternal(baseUrl));
     }
 
-    void removeAllDownloadedAssetBundlesExceptForVersion(String versionToKeep) {
+    void removeAllDownloadedAssetBundlesExceptForVersions(String... versionsToKeep) {
+        List<String> keep = Arrays.asList(versionsToKeep);
         executor.execute(() -> {
             for (Map.Entry<String, AssetBundle> entry : downloadedAssetBundlesByVersion.entrySet()) {
                 String version = entry.getKey();
-                if (version.equals(versionToKeep)) {
+                if (keep.contains(version)) {
                     continue;
                 }
 
@@ -134,7 +152,7 @@ final class AssetBundleManager {
         }
 
         AssetBundle existingBundle = downloadedAssetBundlesByVersion.get(version);
-        if (existingBundle != null) {
+        if (existingBundle != null && existingBundle.isServable()) {
             notifyFinished(existingBundle);
             return;
         }
@@ -312,8 +330,10 @@ final class AssetBundleManager {
 
     private Asset cachedAssetForAsset(Asset asset) {
         for (AssetBundle bundle : downloadedAssetBundlesByVersion.values()) {
+            // A downloaded bundle stays listed when something else removes its files
             Asset cached = bundle.cachedAssetForUrlPath(asset.urlPath, asset.hash);
-            if (cached != null) {
+            File cachedFile = cached == null ? null : cached.getFile();
+            if (cachedFile != null && cachedFile.exists()) {
                 return cached;
             }
         }
